@@ -5,6 +5,7 @@ use winit::{
     dpi::{LogicalSize, PhysicalPosition},
     event::WindowEvent,
     event_loop::ActiveEventLoop,
+    keyboard::PhysicalKey,
     window::{Window, WindowId},
 };
 
@@ -80,6 +81,15 @@ impl ApplicationHandler for App {
                     } else {
                         log::error!("An error occurred while rendering: {error}");
                     }
+                }
+            }
+            WindowEvent::KeyboardInput {
+                device_id: _,
+                event,
+                is_synthetic: _,
+            } => {
+                if let PhysicalKey::Code(key) = event.physical_key {
+                    state.set_key_pressed(key, event.state.is_pressed());
                 }
             }
             _ => (),

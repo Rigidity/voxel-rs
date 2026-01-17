@@ -3,13 +3,19 @@ use winit::event_loop::{ControlFlow, EventLoop};
 
 mod app;
 mod app_state;
+mod block;
 mod camera;
+mod chunk;
 mod texture;
+mod voxel_mesh;
 
 pub use app::*;
 pub use app_state::*;
+pub use block::*;
 pub use camera::*;
+pub use chunk::*;
 pub use texture::*;
+pub use voxel_mesh::*;
 
 fn main() -> Result<()> {
     env_logger::init();

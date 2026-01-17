@@ -1,20 +1,56 @@
 use glam::{Mat4, Vec3, Vec4};
 
 pub struct Camera {
-    pub eye: Vec3,
-    pub target: Vec3,
-    pub up: Vec3,
-    pub aspect: f32,
-    pub fovy: f32,
-    pub znear: f32,
-    pub zfar: f32,
+    pub position: Vec3,
+    pub yaw: f32,
+    pub pitch: f32,
 }
 
 impl Camera {
-    pub fn build_view_projection_matrix(&self) -> Mat4 {
-        let view = Mat4::look_at_rh(self.eye, self.target, self.up);
-        let projection = Mat4::perspective_rh_gl(self.fovy, self.aspect, self.znear, self.zfar);
-        OPENGL_TO_WGPU_MATRIX * projection * view
+    pub fn new(position: Vec3, yaw: f32, pitch: f32) -> Self {
+        Self {
+            position,
+            yaw,
+            pitch,
+        }
+    }
+
+    pub fn view_matrix(&self) -> Mat4 {
+        let (sin_pitch, cos_pitch) = self.pitch.sin_cos();
+        let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
+
+        Mat4::look_to_rh(
+            self.position,
+            Vec3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
+            Vec3::Y,
+        )
+    }
+}
+
+pub struct Projection {
+    aspect: f32,
+    fovy: f32,
+    znear: f32,
+    zfar: f32,
+}
+
+impl Projection {
+    pub fn new(width: u32, height: u32, fovy: f32, znear: f32, zfar: f32) -> Self {
+        Self {
+            aspect: width as f32 / height as f32,
+            fovy: fovy.to_radians(),
+            znear,
+            zfar,
+        }
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.aspect = width as f32 / height as f32;
+    }
+
+    pub fn projection_matrix(&self) -> Mat4 {
+        OPENGL_TO_WGPU_MATRIX
+            * Mat4::perspective_rh_gl(self.fovy, self.aspect, self.znear, self.zfar)
     }
 }
 
