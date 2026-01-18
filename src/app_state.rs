@@ -16,7 +16,6 @@ pub struct AppState {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     diffuse_bind_group: wgpu::BindGroup,
-    diffuse_texture: Texture,
     depth_texture: Texture,
     camera: Camera,
     projection: Projection,
@@ -119,11 +118,7 @@ impl AppState {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera = Camera::new(
-            Vec3::new(0.0, 0.0, 20.0),
-            (-90.0f32).to_radians(),
-            (0.0f32).to_radians(),
-        );
+        let camera = Camera::new(Vec3::new(0.0, 0.0, 40.0), -90.0, 0.0);
         let projection = Projection::new(config.width, config.height, 60.0, 0.1, 1000.0);
         let camera_uniform = CameraUniform::new(&camera, &projection);
 
@@ -237,7 +232,6 @@ impl AppState {
             vertex_buffer,
             index_buffer,
             diffuse_bind_group,
-            diffuse_texture,
             depth_texture,
             camera,
             projection,
@@ -274,9 +268,9 @@ impl AppState {
     }
 
     pub fn update(&mut self) {
-        let speed = 0.05;
+        let speed = 0.1;
 
-        let (sin_yaw, cos_yaw) = self.camera.yaw.sin_cos();
+        let (sin_yaw, cos_yaw) = self.camera.yaw_degrees.to_radians().sin_cos();
         let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
         let right = Vec3::new(-sin_yaw, 0.0, cos_yaw).normalize();
 
@@ -304,7 +298,23 @@ impl AppState {
             self.camera.position.y -= speed;
         }
 
-        println!("Camera position: {:?}", self.camera.position);
+        if self.pressed_keys.contains(&KeyCode::ArrowLeft) {
+            self.camera.yaw_degrees -= 0.75;
+        }
+
+        if self.pressed_keys.contains(&KeyCode::ArrowRight) {
+            self.camera.yaw_degrees += 0.75;
+        }
+
+        if self.pressed_keys.contains(&KeyCode::ArrowUp) {
+            self.camera.pitch_degrees += 0.75;
+        }
+
+        if self.pressed_keys.contains(&KeyCode::ArrowDown) {
+            self.camera.pitch_degrees -= 0.75;
+        }
+
+        self.camera.pitch_degrees = self.camera.pitch_degrees.clamp(-89.0, 89.0);
 
         let camera_uniform = CameraUniform::new(&self.camera, &self.projection);
 
@@ -367,7 +377,7 @@ impl AppState {
         render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.draw_indexed(0..self.chunk_indices, 0, 0..1);
 
         drop(render_pass);

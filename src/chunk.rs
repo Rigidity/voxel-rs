@@ -1,6 +1,6 @@
 use crate::{Block, Vertex, VoxelMesh};
 
-pub const CHUNK_SIZE: usize = 16;
+pub const CHUNK_SIZE: usize = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Chunk {
@@ -44,43 +44,130 @@ impl Chunk {
                     let y = y as f32;
                     let z = z as f32;
 
+                    // Front face
                     let index = mesh.index();
 
-                    mesh.vertices.push(Vertex::new(
-                        [x - 0.0868241, y + 0.49240386, z + 0.0],
-                        [0.4131759, 0.00759614],
-                    ));
-
-                    mesh.vertices.push(Vertex::new(
-                        [x - 0.49513406, y + 0.06958647, z + 0.0],
-                        [0.0048659444, 0.43041354],
-                    ));
-
-                    mesh.vertices.push(Vertex::new(
-                        [x - 0.21918549, y - 0.44939706, z + 0.0],
-                        [0.28081453, 0.949397],
-                    ));
-
-                    mesh.vertices.push(Vertex::new(
-                        [x + 0.35966998, y - 0.3473291, z + 0.0],
-                        [0.85967, 0.84732914],
-                    ));
-
-                    mesh.vertices.push(Vertex::new(
-                        [x + 0.44147372, y + 0.2347359, z + 0.0],
-                        [0.9414737, 0.2652641],
-                    ));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 1.0, z + 1.0], [1.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 1.0, z + 1.0], [0.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 0.0, z + 1.0], [0.0, 1.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 0.0, z + 1.0], [1.0, 1.0]));
 
                     mesh.indices.extend_from_slice(&[
                         index,
                         index + 1,
-                        index + 4,
-                        index + 1,
                         index + 2,
-                        index + 4,
                         index + 2,
                         index + 3,
-                        index + 4,
+                        index,
+                    ]);
+
+                    // Back face
+                    let index = mesh.index();
+
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 1.0, z + 0.0], [1.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 1.0, z + 0.0], [0.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 0.0, z + 0.0], [0.0, 1.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 0.0, z + 0.0], [1.0, 1.0]));
+
+                    mesh.indices.extend_from_slice(&[
+                        index,
+                        index + 1,
+                        index + 2,
+                        index + 2,
+                        index + 3,
+                        index,
+                    ]);
+
+                    // Left face
+                    let index = mesh.index();
+
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 1.0, z + 1.0], [1.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 1.0, z + 0.0], [0.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 0.0, z + 0.0], [0.0, 1.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 0.0, z + 1.0], [1.0, 1.0]));
+
+                    mesh.indices.extend_from_slice(&[
+                        index,
+                        index + 1,
+                        index + 2,
+                        index + 2,
+                        index + 3,
+                        index,
+                    ]);
+
+                    // Right face
+                    let index = mesh.index();
+
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 1.0, z + 0.0], [1.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 1.0, z + 1.0], [0.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 0.0, z + 1.0], [0.0, 1.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 0.0, z + 0.0], [1.0, 1.0]));
+
+                    mesh.indices.extend_from_slice(&[
+                        index,
+                        index + 1,
+                        index + 2,
+                        index + 2,
+                        index + 3,
+                        index,
+                    ]);
+
+                    // Top face
+                    let index = mesh.index();
+
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 1.0, z + 1.0], [1.0, 1.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 1.0, z + 0.0], [1.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 1.0, z + 0.0], [0.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 1.0, z + 1.0], [0.0, 1.0]));
+
+                    mesh.indices.extend_from_slice(&[
+                        index,
+                        index + 1,
+                        index + 2,
+                        index + 2,
+                        index + 3,
+                        index,
+                    ]);
+
+                    // Bottom face
+                    let index = mesh.index();
+
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 0.0, z + 0.0], [1.0, 1.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 1.0, y + 0.0, z + 1.0], [1.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 0.0, z + 1.0], [0.0, 0.0]));
+                    mesh.vertices
+                        .push(Vertex::new([x + 0.0, y + 0.0, z + 0.0], [0.0, 1.0]));
+
+                    mesh.indices.extend_from_slice(&[
+                        index,
+                        index + 1,
+                        index + 2,
+                        index + 2,
+                        index + 3,
+                        index,
                     ]);
                 }
             }

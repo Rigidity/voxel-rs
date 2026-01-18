@@ -3,7 +3,7 @@ use bytemuck::{Pod, Zeroable};
 #[derive(Debug, Clone, Default)]
 pub struct VoxelMesh {
     pub vertices: Vec<Vertex>,
-    pub indices: Vec<u16>,
+    pub indices: Vec<u32>,
 }
 
 impl VoxelMesh {
@@ -11,8 +11,8 @@ impl VoxelMesh {
         Self::default()
     }
 
-    pub fn index(&self) -> u16 {
-        self.vertices.len() as u16
+    pub fn index(&self) -> u32 {
+        self.vertices.len() as u32
     }
 }
 
