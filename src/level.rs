@@ -212,7 +212,6 @@ impl Level {
                 }
 
                 meshes.push(mesh.build(device));
-                break;
             }
         }
 
