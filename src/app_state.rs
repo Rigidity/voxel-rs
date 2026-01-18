@@ -1,11 +1,10 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, sync::Arc, time::Instant};
 
-use glam::{IVec3, Vec3};
-use indexmap::IndexMap;
+use glam::Vec3;
 use wgpu::util::DeviceExt;
 use winit::{keyboard::KeyCode, window::Window};
 
-use crate::{Camera, Chunk, Projection, Texture, Vertex};
+use crate::{Camera, Level, Projection, Texture, Vertex};
 
 pub struct AppState {
     surface: wgpu::Surface<'static>,
@@ -20,9 +19,12 @@ pub struct AppState {
     projection: Projection,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    loaded_chunks: IndexMap<IVec3, Chunk>,
+    level: Level,
     window: Arc<Window>,
     pressed_keys: HashSet<KeyCode>,
+    // FPS tracking
+    frame_count: u32,
+    last_fps_print_time: Instant,
 }
 
 impl AppState {
@@ -225,17 +227,7 @@ impl AppState {
 
         let depth_texture = Texture::create_depth_texture(&device, &config, "depth_texture");
 
-        let mut loaded_chunks = IndexMap::new();
-
-        for x in -2..2 {
-            for y in -2..2 {
-                for z in -2..2 {
-                    let chunk_pos = IVec3::new(x, y, z);
-                    let chunk = Chunk::new(&device, &chunk_position_bind_group_layout, chunk_pos);
-                    loaded_chunks.insert(chunk_pos, chunk);
-                }
-            }
-        }
+        let level = Level::new(&device, &chunk_position_bind_group_layout);
 
         Ok(Self {
             surface,
@@ -250,9 +242,11 @@ impl AppState {
             projection,
             camera_buffer,
             camera_bind_group,
-            loaded_chunks,
+            level,
             window,
             pressed_keys: HashSet::new(),
+            frame_count: 0,
+            last_fps_print_time: Instant::now(),
         })
     }
 
@@ -281,11 +275,7 @@ impl AppState {
     }
 
     pub fn update(&mut self) {
-        for chunk in self.loaded_chunks.values_mut() {
-            if chunk.is_dirty() {
-                chunk.regenerate_mesh(&self.device);
-            }
-        }
+        self.level.update(&self.device);
 
         let speed = 0.1;
 
@@ -396,14 +386,24 @@ impl AppState {
         render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
-        for chunk in self.loaded_chunks.values() {
-            chunk.render(&mut render_pass);
-        }
+        self.level.render(&mut render_pass);
 
         drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
+
+        // FPS calculation
+        self.frame_count += 1;
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.last_fps_print_time);
+
+        if elapsed.as_secs() >= 1 {
+            let fps = self.frame_count as f64 / elapsed.as_secs_f64();
+            println!("FPS: {:.2}", fps);
+            self.frame_count = 0;
+            self.last_fps_print_time = now;
+        }
 
         Ok(())
     }

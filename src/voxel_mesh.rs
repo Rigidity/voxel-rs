@@ -31,7 +31,11 @@ impl VoxelMeshBuilder {
         self.vertices.len() as u32
     }
 
-    pub fn build(self, device: &wgpu::Device) -> VoxelMesh {
+    pub fn build(self, device: &wgpu::Device) -> Option<VoxelMesh> {
+        if self.indices.is_empty() {
+            return None;
+        }
+
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(self.vertices.as_slice()),
@@ -44,11 +48,11 @@ impl VoxelMeshBuilder {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        VoxelMesh {
+        Some(VoxelMesh {
             vertex_buffer,
             index_buffer,
             indices: self.indices.len() as u32,
-        }
+        })
     }
 }
 

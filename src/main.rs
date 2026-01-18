@@ -6,6 +6,7 @@ mod app_state;
 mod block;
 mod camera;
 mod chunk;
+mod level;
 mod texture;
 mod voxel_mesh;
 
@@ -14,6 +15,7 @@ pub use app_state::*;
 pub use block::*;
 pub use camera::*;
 pub use chunk::*;
+pub use level::*;
 pub use texture::*;
 pub use voxel_mesh::*;
 
