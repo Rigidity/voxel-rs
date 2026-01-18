@@ -1,6 +1,7 @@
 use std::{collections::HashSet, sync::Arc};
 
-use glam::Vec3;
+use glam::{IVec3, Vec3};
+use indexmap::IndexMap;
 use wgpu::util::DeviceExt;
 use winit::{keyboard::KeyCode, window::Window};
 
@@ -13,15 +14,13 @@ pub struct AppState {
     config: wgpu::SurfaceConfiguration,
     is_surface_configured: bool,
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
     diffuse_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
     camera: Camera,
     projection: Projection,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    chunk_indices: u32,
+    loaded_chunks: IndexMap<IVec3, Chunk>,
     window: Arc<Window>,
     pressed_keys: HashSet<KeyCode>,
 }
@@ -118,7 +117,7 @@ impl AppState {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera = Camera::new(Vec3::new(0.0, 0.0, 40.0), -90.0, 0.0);
+        let camera = Camera::new(Vec3::new(0.0, 0.0, 100.0), -90.0, 0.0);
         let projection = Projection::new(config.width, config.height, 60.0, 0.1, 1000.0);
         let camera_uniform = CameraUniform::new(&camera, &projection);
 
@@ -152,12 +151,31 @@ impl AppState {
             label: Some("camera_bind_group"),
         });
 
+        let chunk_position_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("chunk_position_bind_group_layout"),
+            });
+
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                bind_group_layouts: &[
+                    &texture_bind_group_layout,
+                    &camera_bind_group_layout,
+                    &chunk_position_bind_group_layout,
+                ],
                 immediate_size: 0,
             });
 
@@ -205,22 +223,19 @@ impl AppState {
             cache: None,
         });
 
-        let chunk = Chunk::new();
-        let mesh = chunk.create_mesh();
-
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(mesh.vertices.as_slice()),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(mesh.indices.as_slice()),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-
         let depth_texture = Texture::create_depth_texture(&device, &config, "depth_texture");
+
+        let mut loaded_chunks = IndexMap::new();
+
+        for x in -2..2 {
+            for y in -2..2 {
+                for z in -2..2 {
+                    let chunk_pos = IVec3::new(x, y, z);
+                    let chunk = Chunk::new(&device, &chunk_position_bind_group_layout, chunk_pos);
+                    loaded_chunks.insert(chunk_pos, chunk);
+                }
+            }
+        }
 
         Ok(Self {
             surface,
@@ -229,15 +244,13 @@ impl AppState {
             config,
             is_surface_configured: false,
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
             diffuse_bind_group,
             depth_texture,
             camera,
             projection,
             camera_buffer,
             camera_bind_group,
-            chunk_indices: mesh.indices.len() as u32,
+            loaded_chunks,
             window,
             pressed_keys: HashSet::new(),
         })
@@ -268,6 +281,12 @@ impl AppState {
     }
 
     pub fn update(&mut self) {
+        for chunk in self.loaded_chunks.values_mut() {
+            if chunk.is_dirty() {
+                chunk.regenerate_mesh(&self.device);
+            }
+        }
+
         let speed = 0.1;
 
         let (sin_yaw, cos_yaw) = self.camera.yaw_degrees.to_radians().sin_cos();
@@ -376,9 +395,10 @@ impl AppState {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        render_pass.draw_indexed(0..self.chunk_indices, 0, 0..1);
+
+        for chunk in self.loaded_chunks.values() {
+            chunk.render(&mut render_pass);
+        }
 
         drop(render_pass);
 

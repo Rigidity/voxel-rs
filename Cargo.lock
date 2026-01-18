@@ -2491,6 +2491,7 @@ dependencies = [
  "env_logger",
  "glam",
  "image",
+ "indexmap",
  "log",
  "pollster",
  "wgpu",
