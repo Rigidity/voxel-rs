@@ -8,28 +8,33 @@ var<uniform> camera: CameraUniform;
 var<uniform> chunk_position: vec3<f32>;
 
 struct VertexInput {
-    @location(0) position: vec3<f32>,
-    @location(1) tex_coords: vec2<f32>,
-    @location(2) normal: vec3<f32>,
-    @location(3) ao: f32,
+    @location(0) data: u32,
 }
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) tex_coords: vec2<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) ao: f32,
+    @location(1) ao: f32,
 }
 
 @vertex
 fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
+    let x = (model.data >> 26) & 0x3F;
+    let y = (model.data >> 20) & 0x3F;
+    let z = (model.data >> 14) & 0x3F;
+    let u = (model.data >> 13) & 0x01;
+    let v = (model.data >> 12) & 0x01;
+    let ao = (model.data >> 10) & 0x03;
+
+    let position = vec3<f32>(f32(x), f32(y), f32(z));
+    let tex_coords = vec2<f32>(f32(u), f32(v));
+
     var out: VertexOutput;
-    out.tex_coords = model.tex_coords;
-    out.normal = model.normal;
-    out.ao = model.ao;
-    out.clip_position = camera.view_proj * vec4<f32>(chunk_position + model.position, 1.0);
+    out.tex_coords = tex_coords;
+    out.ao = f32(ao) / 3.0;
+    out.clip_position = camera.view_proj * vec4<f32>(chunk_position + position, 1.0);
     return out;
 }
 
@@ -40,23 +45,6 @@ var s_diffuse: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Sample the texture
     let texture_color = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-    
-    // Define a directional light (like the sun)
-    let light_dir = normalize(vec3<f32>(0.0, 1.0, 0.0));
-    
-    // Calculate diffuse lighting
-    let diffuse = max(dot(in.normal, light_dir), 0.0);
-    
-    // Base ambient lighting (darker than before since AO will brighten open areas)
-    let ambient = 0.15;
-    
-    // Combine directional lighting
-    let directional_lighting = ambient + diffuse * 0.6;
-    
-    // Apply ambient occlusion (AO values range from dark in corners to bright in open areas)
-    let lighting = directional_lighting * in.ao;
-    
-    return vec4<f32>(texture_color.rgb * lighting, texture_color.a);
+    return vec4<f32>(texture_color.rgb * in.ao, texture_color.a);
 }

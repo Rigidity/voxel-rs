@@ -48,12 +48,12 @@ impl Level {
             .is_some_and(|block| block != Block::Air)
     }
 
-    fn calculate_ao(side1: bool, side2: bool, corner: bool) -> f32 {
+    fn calculate_ao(side1: bool, side2: bool, corner: bool) -> u32 {
         if side1 && side2 {
-            return 0.25;
+            return 1;
         }
-        let count = (side1 as i32) + (side2 as i32) + (corner as i32);
-        (3 - count) as f32 / 3.0
+        let count = (side1 as u32) + (side2 as u32) + (corner as u32);
+        3 - count
     }
 
     pub fn update(&mut self, device: &wgpu::Device) {
@@ -95,9 +95,9 @@ impl Level {
                                 .get_block(global_pos - IVec3::Y)
                                 .is_none_or(|block| block == Block::Air);
 
-                            let x = x as f32;
-                            let y = y as f32;
-                            let z = z as f32;
+                            let x = x as u32;
+                            let y = y as u32;
+                            let z = z as u32;
 
                             // Front face (+Z)
                             if front {
@@ -130,27 +130,27 @@ impl Level {
                                 );
 
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 1.0, z + 1.0],
-                                    [1.0, 0.0],
-                                    [0.0, 0.0, 1.0],
+                                    [x + 1, y + 1, z + 1],
+                                    [1, 0],
+                                    [0, 0, 1],
                                     tr_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 1.0, z + 1.0],
-                                    [0.0, 0.0],
-                                    [0.0, 0.0, 1.0],
+                                    [x, y + 1, z + 1],
+                                    [0, 0],
+                                    [0, 0, 1],
                                     tl_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 0.0, z + 1.0],
-                                    [0.0, 1.0],
-                                    [0.0, 0.0, 1.0],
+                                    [x, y, z + 1],
+                                    [0, 1],
+                                    [0, 0, 1],
                                     bl_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 0.0, z + 1.0],
-                                    [1.0, 1.0],
-                                    [0.0, 0.0, 1.0],
+                                    [x + 1, y, z + 1],
+                                    [1, 1],
+                                    [0, 0, 1],
                                     br_ao,
                                 ));
 
@@ -195,27 +195,27 @@ impl Level {
                                 );
 
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 1.0, z + 0.0],
-                                    [1.0, 0.0],
-                                    [0.0, 0.0, -1.0],
+                                    [x, y + 1, z],
+                                    [1, 0],
+                                    [0, 0, -1],
                                     tl_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 1.0, z + 0.0],
-                                    [0.0, 0.0],
-                                    [0.0, 0.0, -1.0],
+                                    [x + 1, y + 1, z],
+                                    [0, 0],
+                                    [0, 0, -1],
                                     tr_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 0.0, z + 0.0],
-                                    [0.0, 1.0],
-                                    [0.0, 0.0, -1.0],
+                                    [x + 1, y, z],
+                                    [0, 1],
+                                    [0, 0, -1],
                                     br_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 0.0, z + 0.0],
-                                    [1.0, 1.0],
-                                    [0.0, 0.0, -1.0],
+                                    [x, y, z],
+                                    [1, 1],
+                                    [0, 0, -1],
                                     bl_ao,
                                 ));
 
@@ -260,27 +260,27 @@ impl Level {
                                 );
 
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 1.0, z + 1.0],
-                                    [1.0, 0.0],
-                                    [-1.0, 0.0, 0.0],
+                                    [x, y + 1, z + 1],
+                                    [1, 0],
+                                    [-1, 0, 0],
                                     tf_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 1.0, z + 0.0],
-                                    [0.0, 0.0],
-                                    [-1.0, 0.0, 0.0],
+                                    [x, y + 1, z],
+                                    [0, 0],
+                                    [-1, 0, 0],
                                     tb_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 0.0, z + 0.0],
-                                    [0.0, 1.0],
-                                    [-1.0, 0.0, 0.0],
+                                    [x, y, z],
+                                    [0, 1],
+                                    [-1, 0, 0],
                                     bb_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 0.0, z + 1.0],
-                                    [1.0, 1.0],
-                                    [-1.0, 0.0, 0.0],
+                                    [x, y, z + 1],
+                                    [1, 1],
+                                    [-1, 0, 0],
                                     bf_ao,
                                 ));
 
@@ -325,27 +325,27 @@ impl Level {
                                 );
 
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 1.0, z + 0.0],
-                                    [1.0, 0.0],
-                                    [1.0, 0.0, 0.0],
+                                    [x + 1, y + 1, z],
+                                    [1, 0],
+                                    [1, 0, 0],
                                     tb_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 1.0, z + 1.0],
-                                    [0.0, 0.0],
-                                    [1.0, 0.0, 0.0],
+                                    [x + 1, y + 1, z + 1],
+                                    [0, 0],
+                                    [1, 0, 0],
                                     tf_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 0.0, z + 1.0],
-                                    [0.0, 1.0],
-                                    [1.0, 0.0, 0.0],
+                                    [x + 1, y, z + 1],
+                                    [0, 1],
+                                    [1, 0, 0],
                                     bf_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 0.0, z + 0.0],
-                                    [1.0, 1.0],
-                                    [1.0, 0.0, 0.0],
+                                    [x + 1, y, z],
+                                    [1, 1],
+                                    [1, 0, 0],
                                     bb_ao,
                                 ));
 
@@ -390,27 +390,27 @@ impl Level {
                                 );
 
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 1.0, z + 1.0],
-                                    [1.0, 1.0],
-                                    [0.0, 1.0, 0.0],
+                                    [x + 1, y + 1, z + 1],
+                                    [1, 1],
+                                    [0, 1, 0],
                                     fr_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 1.0, z + 0.0],
-                                    [1.0, 0.0],
-                                    [0.0, 1.0, 0.0],
+                                    [x + 1, y + 1, z],
+                                    [1, 0],
+                                    [0, 1, 0],
                                     br_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 1.0, z + 0.0],
-                                    [0.0, 0.0],
-                                    [0.0, 1.0, 0.0],
+                                    [x, y + 1, z],
+                                    [0, 0],
+                                    [0, 1, 0],
                                     bl_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 1.0, z + 1.0],
-                                    [0.0, 1.0],
-                                    [0.0, 1.0, 0.0],
+                                    [x, y + 1, z + 1],
+                                    [0, 1],
+                                    [0, 1, 0],
                                     fl_ao,
                                 ));
 
@@ -455,27 +455,27 @@ impl Level {
                                 );
 
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 0.0, z + 0.0],
-                                    [1.0, 1.0],
-                                    [0.0, -1.0, 0.0],
+                                    [x + 1, y, z],
+                                    [1, 1],
+                                    [0, -1, 0],
                                     br_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 1.0, y + 0.0, z + 1.0],
-                                    [1.0, 0.0],
-                                    [0.0, -1.0, 0.0],
+                                    [x + 1, y, z + 1],
+                                    [1, 0],
+                                    [0, -1, 0],
                                     fr_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 0.0, z + 1.0],
-                                    [0.0, 0.0],
-                                    [0.0, -1.0, 0.0],
+                                    [x, y, z + 1],
+                                    [0, 0],
+                                    [0, -1, 0],
                                     fl_ao,
                                 ));
                                 mesh.vertices.push(Vertex::new(
-                                    [x + 0.0, y + 0.0, z + 0.0],
-                                    [0.0, 1.0],
-                                    [0.0, -1.0, 0.0],
+                                    [x, y, z],
+                                    [0, 1],
+                                    [0, -1, 0],
                                     bl_ao,
                                 ));
 
