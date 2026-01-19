@@ -43,6 +43,19 @@ impl Level {
         ))
     }
 
+    fn is_solid(&self, position: IVec3) -> bool {
+        self.get_block(position)
+            .is_some_and(|block| block != Block::Air)
+    }
+
+    fn calculate_ao(side1: bool, side2: bool, corner: bool) -> f32 {
+        if side1 && side2 {
+            return 0.25;
+        }
+        let count = (side1 as i32) + (side2 as i32) + (corner as i32);
+        (3 - count) as f32 / 3.0
+    }
+
     pub fn update(&mut self, device: &wgpu::Device) {
         let mut meshes = Vec::new();
 
@@ -86,18 +99,60 @@ impl Level {
                             let y = y as f32;
                             let z = z as f32;
 
-                            // Front face
+                            // Front face (+Z)
                             if front {
                                 let index = mesh.index();
 
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 1.0, z + 1.0], [1.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 1.0, z + 1.0], [0.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 0.0, z + 1.0], [0.0, 1.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 0.0, z + 1.0], [1.0, 1.0]));
+                                // Calculate AO for each vertex
+                                // Top-right vertex
+                                let tr_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, 1)),
+                                );
+                                // Top-left vertex
+                                let tl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, 1)),
+                                );
+                                // Bottom-left vertex
+                                let bl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, 1)),
+                                );
+                                // Bottom-right vertex
+                                let br_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, 1)),
+                                );
+
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 1.0, z + 1.0],
+                                    [1.0, 0.0],
+                                    [0.0, 0.0, 1.0],
+                                    tr_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 1.0, z + 1.0],
+                                    [0.0, 0.0],
+                                    [0.0, 0.0, 1.0],
+                                    tl_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 0.0, z + 1.0],
+                                    [0.0, 1.0],
+                                    [0.0, 0.0, 1.0],
+                                    bl_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 0.0, z + 1.0],
+                                    [1.0, 1.0],
+                                    [0.0, 0.0, 1.0],
+                                    br_ao,
+                                ));
 
                                 mesh.indices.extend_from_slice(&[
                                     index,
@@ -109,18 +164,60 @@ impl Level {
                                 ]);
                             }
 
-                            // Back face
+                            // Back face (-Z)
                             if back {
                                 let index = mesh.index();
 
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 1.0, z + 0.0], [1.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 1.0, z + 0.0], [0.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 0.0, z + 0.0], [0.0, 1.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 0.0, z + 0.0], [1.0, 1.0]));
+                                // Calculate AO for each vertex
+                                // Top-left vertex
+                                let tl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, -1)),
+                                );
+                                // Top-right vertex
+                                let tr_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, -1)),
+                                );
+                                // Bottom-right vertex
+                                let br_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, -1)),
+                                );
+                                // Bottom-left vertex
+                                let bl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, -1)),
+                                );
+
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 1.0, z + 0.0],
+                                    [1.0, 0.0],
+                                    [0.0, 0.0, -1.0],
+                                    tl_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 1.0, z + 0.0],
+                                    [0.0, 0.0],
+                                    [0.0, 0.0, -1.0],
+                                    tr_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 0.0, z + 0.0],
+                                    [0.0, 1.0],
+                                    [0.0, 0.0, -1.0],
+                                    br_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 0.0, z + 0.0],
+                                    [1.0, 1.0],
+                                    [0.0, 0.0, -1.0],
+                                    bl_ao,
+                                ));
 
                                 mesh.indices.extend_from_slice(&[
                                     index,
@@ -132,18 +229,60 @@ impl Level {
                                 ]);
                             }
 
-                            // Left face
+                            // Left face (-X)
                             if left {
                                 let index = mesh.index();
 
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 1.0, z + 1.0], [1.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 1.0, z + 0.0], [0.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 0.0, z + 0.0], [0.0, 1.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 0.0, z + 1.0], [1.0, 1.0]));
+                                // Calculate AO for each vertex
+                                // Top-front vertex
+                                let tf_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, 1)),
+                                );
+                                // Top-back vertex
+                                let tb_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, -1)),
+                                );
+                                // Bottom-back vertex
+                                let bb_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, -1)),
+                                );
+                                // Bottom-front vertex
+                                let bf_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, 1)),
+                                );
+
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 1.0, z + 1.0],
+                                    [1.0, 0.0],
+                                    [-1.0, 0.0, 0.0],
+                                    tf_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 1.0, z + 0.0],
+                                    [0.0, 0.0],
+                                    [-1.0, 0.0, 0.0],
+                                    tb_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 0.0, z + 0.0],
+                                    [0.0, 1.0],
+                                    [-1.0, 0.0, 0.0],
+                                    bb_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 0.0, z + 1.0],
+                                    [1.0, 1.0],
+                                    [-1.0, 0.0, 0.0],
+                                    bf_ao,
+                                ));
 
                                 mesh.indices.extend_from_slice(&[
                                     index,
@@ -155,18 +294,60 @@ impl Level {
                                 ]);
                             }
 
-                            // Right face
+                            // Right face (+X)
                             if right {
                                 let index = mesh.index();
 
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 1.0, z + 0.0], [1.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 1.0, z + 1.0], [0.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 0.0, z + 1.0], [0.0, 1.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 0.0, z + 0.0], [1.0, 1.0]));
+                                // Calculate AO for each vertex
+                                // Top-back vertex
+                                let tb_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, -1)),
+                                );
+                                // Top-front vertex
+                                let tf_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, 1)),
+                                );
+                                // Bottom-front vertex
+                                let bf_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, 1)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, 1)),
+                                );
+                                // Bottom-back vertex
+                                let bb_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 0, -1)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, -1)),
+                                );
+
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 1.0, z + 0.0],
+                                    [1.0, 0.0],
+                                    [1.0, 0.0, 0.0],
+                                    tb_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 1.0, z + 1.0],
+                                    [0.0, 0.0],
+                                    [1.0, 0.0, 0.0],
+                                    tf_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 0.0, z + 1.0],
+                                    [0.0, 1.0],
+                                    [1.0, 0.0, 0.0],
+                                    bf_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 0.0, z + 0.0],
+                                    [1.0, 1.0],
+                                    [1.0, 0.0, 0.0],
+                                    bb_ao,
+                                ));
 
                                 mesh.indices.extend_from_slice(&[
                                     index,
@@ -178,18 +359,60 @@ impl Level {
                                 ]);
                             }
 
-                            // Top face
+                            // Top face (+Y)
                             if top {
                                 let index = mesh.index();
 
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 1.0, z + 1.0], [1.0, 1.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 1.0, z + 0.0], [1.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 1.0, z + 0.0], [0.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 1.0, z + 1.0], [0.0, 1.0]));
+                                // Calculate AO for each vertex
+                                // Front-right vertex
+                                let fr_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, 1)),
+                                );
+                                // Back-right vertex
+                                let br_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(1, 1, -1)),
+                                );
+                                // Back-left vertex
+                                let bl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, -1)),
+                                );
+                                // Front-left vertex
+                                let fl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, 1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, 1, 1)),
+                                );
+
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 1.0, z + 1.0],
+                                    [1.0, 1.0],
+                                    [0.0, 1.0, 0.0],
+                                    fr_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 1.0, z + 0.0],
+                                    [1.0, 0.0],
+                                    [0.0, 1.0, 0.0],
+                                    br_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 1.0, z + 0.0],
+                                    [0.0, 0.0],
+                                    [0.0, 1.0, 0.0],
+                                    bl_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 1.0, z + 1.0],
+                                    [0.0, 1.0],
+                                    [0.0, 1.0, 0.0],
+                                    fl_ao,
+                                ));
 
                                 mesh.indices.extend_from_slice(&[
                                     index,
@@ -201,18 +424,60 @@ impl Level {
                                 ]);
                             }
 
-                            // Bottom face
+                            // Bottom face (-Y)
                             if bottom {
                                 let index = mesh.index();
 
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 0.0, z + 0.0], [1.0, 1.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 1.0, y + 0.0, z + 1.0], [1.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 0.0, z + 1.0], [0.0, 0.0]));
-                                mesh.vertices
-                                    .push(Vertex::new([x + 0.0, y + 0.0, z + 0.0], [0.0, 1.0]));
+                                // Calculate AO for each vertex
+                                // Back-right vertex
+                                let br_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, -1)),
+                                );
+                                // Front-right vertex
+                                let fr_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(1, -1, 1)),
+                                );
+                                // Front-left vertex
+                                let fl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, 1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, 1)),
+                                );
+                                // Back-left vertex
+                                let bl_ao = Self::calculate_ao(
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, 0)),
+                                    self.is_solid(global_pos + IVec3::new(0, -1, -1)),
+                                    self.is_solid(global_pos + IVec3::new(-1, -1, -1)),
+                                );
+
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 0.0, z + 0.0],
+                                    [1.0, 1.0],
+                                    [0.0, -1.0, 0.0],
+                                    br_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 1.0, y + 0.0, z + 1.0],
+                                    [1.0, 0.0],
+                                    [0.0, -1.0, 0.0],
+                                    fr_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 0.0, z + 1.0],
+                                    [0.0, 0.0],
+                                    [0.0, -1.0, 0.0],
+                                    fl_ao,
+                                ));
+                                mesh.vertices.push(Vertex::new(
+                                    [x + 0.0, y + 0.0, z + 0.0],
+                                    [0.0, 1.0],
+                                    [0.0, -1.0, 0.0],
+                                    bl_ao,
+                                ));
 
                                 mesh.indices.extend_from_slice(&[
                                     index,

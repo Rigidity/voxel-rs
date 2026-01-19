@@ -61,16 +61,20 @@ impl VoxelMeshBuilder {
 pub struct Vertex {
     pub position: [f32; 3],
     pub tex_coords: [f32; 2],
+    pub normal: [f32; 3],
+    pub ao: f32,
 }
 
 impl Vertex {
-    pub const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
+    pub const ATTRIBS: [wgpu::VertexAttribute; 4] =
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x3, 3 => Float32];
 
-    pub fn new(position: [f32; 3], tex_coords: [f32; 2]) -> Self {
+    pub fn new(position: [f32; 3], tex_coords: [f32; 2], normal: [f32; 3], ao: f32) -> Self {
         Self {
             position,
             tex_coords,
+            normal,
+            ao,
         }
     }
 
