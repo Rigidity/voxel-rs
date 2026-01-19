@@ -1,15 +1,13 @@
-use std::sync::Arc;
-
 use winit::{
     application::ApplicationHandler,
-    dpi::{LogicalSize, PhysicalPosition},
-    event::WindowEvent,
+    dpi::LogicalSize,
+    event::{DeviceEvent, DeviceId, WindowEvent},
     event_loop::ActiveEventLoop,
     keyboard::PhysicalKey,
-    window::{Window, WindowId},
+    window::WindowId,
 };
 
-use crate::AppState;
+use crate::{AppState, Window};
 
 #[derive(Default)]
 pub struct App {
@@ -28,27 +26,15 @@ impl ApplicationHandler for App {
             return;
         }
 
-        let attributes = Window::default_attributes()
+        let attributes = winit::window::Window::default_attributes()
             .with_inner_size(LogicalSize::new(1000, 600))
             .with_visible(false);
 
-        let window = event_loop.create_window(attributes).unwrap();
-
-        if let Some(monitor) = window.current_monitor() {
-            let screen_size = monitor.size();
-            let window_size = window.outer_size();
-
-            window.set_outer_position(PhysicalPosition {
-                x: screen_size.width.saturating_sub(window_size.width) as f64 / 2.
-                    + monitor.position().x as f64,
-                y: screen_size.height.saturating_sub(window_size.height) as f64 / 2.
-                    + monitor.position().y as f64,
-            });
-        }
-
+        let window = Window::new(event_loop.create_window(attributes).unwrap());
+        window.center();
         window.set_visible(true);
 
-        self.state = Some(pollster::block_on(AppState::new(Arc::new(window))).unwrap())
+        self.state = Some(pollster::block_on(AppState::new(window)).unwrap())
     }
 
     fn window_event(
@@ -76,7 +62,7 @@ impl ApplicationHandler for App {
                         error,
                         wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated
                     ) {
-                        let size = state.window().inner_size();
+                        let size = state.window().size();
                         state.resize(size.width, size.height);
                     } else {
                         log::error!("An error occurred while rendering: {error}");
@@ -89,10 +75,34 @@ impl ApplicationHandler for App {
                 is_synthetic: _,
             } => {
                 if let PhysicalKey::Code(key) = event.physical_key {
-                    state.set_key_pressed(key, event.state.is_pressed());
+                    state.update_key_state(key, event.state.is_pressed());
                 }
             }
-            _ => (),
+            WindowEvent::CursorLeft { device_id: _ } => {
+                state.update_mouse_position(None);
+            }
+            WindowEvent::CursorMoved {
+                device_id: _,
+                position,
+            } => {
+                state.update_mouse_position(Some(position));
+            }
+            _ => {}
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        let Some(state) = &mut self.state else {
+            return;
+        };
+
+        if let DeviceEvent::MouseMotion { delta } = event {
+            state.update_relative_mouse_position(delta);
         }
     }
 }

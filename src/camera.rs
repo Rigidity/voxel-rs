@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 use winit::keyboard::KeyCode;
 
-use crate::Input;
+use crate::Window;
 
 pub struct Camera {
     pub position: Vec3,
@@ -29,51 +29,62 @@ impl Camera {
         )
     }
 
-    pub fn update(&mut self, input: &Input) {
+    pub fn update(&mut self, window: &mut Window) {
         let speed = 0.5;
 
         let (sin_yaw, cos_yaw) = self.yaw_degrees.to_radians().sin_cos();
         let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
         let right = Vec3::new(-sin_yaw, 0.0, cos_yaw).normalize();
 
-        if input.is_key_pressed(KeyCode::KeyA) {
+        if window.is_key_pressed(KeyCode::KeyA) {
             self.position -= right * speed;
         }
 
-        if input.is_key_pressed(KeyCode::KeyD) {
+        if window.is_key_pressed(KeyCode::KeyD) {
             self.position += right * speed;
         }
 
-        if input.is_key_pressed(KeyCode::KeyW) {
+        if window.is_key_pressed(KeyCode::KeyW) {
             self.position += forward * speed;
         }
 
-        if input.is_key_pressed(KeyCode::KeyS) {
+        if window.is_key_pressed(KeyCode::KeyS) {
             self.position -= forward * speed;
         }
 
-        if input.is_key_pressed(KeyCode::Space) {
+        if window.is_key_pressed(KeyCode::Space) {
             self.position.y += speed;
         }
 
-        if input.is_key_pressed(KeyCode::ShiftLeft) {
+        if window.is_key_pressed(KeyCode::ShiftLeft) {
             self.position.y -= speed;
         }
 
-        if input.is_key_pressed(KeyCode::ArrowLeft) {
+        if window.is_key_pressed(KeyCode::ArrowLeft) {
             self.yaw_degrees -= 0.75;
         }
 
-        if input.is_key_pressed(KeyCode::ArrowRight) {
+        if window.is_key_pressed(KeyCode::ArrowRight) {
             self.yaw_degrees += 0.75;
         }
 
-        if input.is_key_pressed(KeyCode::ArrowUp) {
+        if window.is_key_pressed(KeyCode::ArrowUp) {
             self.pitch_degrees += 0.75;
         }
 
-        if input.is_key_pressed(KeyCode::ArrowDown) {
+        if window.is_key_pressed(KeyCode::ArrowDown) {
             self.pitch_degrees -= 0.75;
+        }
+
+        if window.is_key_just_pressed(KeyCode::Escape) {
+            window.set_mouse_locked(!window.is_mouse_locked());
+        }
+
+        if window.is_mouse_locked() {
+            let pos = window.relative_mouse_position();
+
+            self.yaw_degrees += pos.x as f32 / 10.0;
+            self.pitch_degrees -= pos.y as f32 / 10.0;
         }
 
         self.pitch_degrees = self.pitch_degrees.clamp(-89.0, 89.0);

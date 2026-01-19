@@ -1,10 +1,10 @@
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 use glam::Vec3;
 use wgpu::util::DeviceExt;
-use winit::{keyboard::KeyCode, window::Window};
+use winit::{dpi::PhysicalPosition, keyboard::KeyCode};
 
-use crate::{Camera, Input, Level, Projection, Texture, VoxelRenderer};
+use crate::{Camera, Level, Projection, Texture, VoxelRenderer, Window};
 
 pub struct AppState {
     surface: wgpu::Surface<'static>,
@@ -19,23 +19,22 @@ pub struct AppState {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     level: Level,
-    window: Arc<Window>,
-    input: Input,
+    window: Window,
     // FPS tracking
     frame_count: u32,
     last_fps_print_time: Instant,
 }
 
 impl AppState {
-    pub async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
-        let size = window.inner_size();
+    pub async fn new(window: Window) -> anyhow::Result<Self> {
+        let size = window.size();
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
             ..Default::default()
         });
 
-        let surface = instance.create_surface(window.clone())?;
+        let surface = instance.create_surface(&window)?;
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -130,7 +129,6 @@ impl AppState {
             camera_bind_group,
             level,
             window,
-            input: Input::default(),
             frame_count: 0,
             last_fps_print_time: Instant::now(),
         })
@@ -140,8 +138,16 @@ impl AppState {
         &self.window
     }
 
-    pub fn set_key_pressed(&mut self, key: KeyCode, pressed: bool) {
-        self.input.set_key_pressed(key, pressed);
+    pub fn update_key_state(&mut self, key: KeyCode, pressed: bool) {
+        self.window.update_key_state(key, pressed);
+    }
+
+    pub fn update_mouse_position(&mut self, position: Option<PhysicalPosition<f64>>) {
+        self.window.update_mouse_position(position);
+    }
+
+    pub fn update_relative_mouse_position(&mut self, delta: (f64, f64)) {
+        self.window.update_relative_mouse_position(delta);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -158,7 +164,7 @@ impl AppState {
 
     pub fn update(&mut self) {
         self.level.update(&self.device);
-        self.camera.update(&self.input);
+        self.camera.update(&mut self.window);
 
         let camera_uniform = CameraUniform::new(&self.camera, &self.projection);
 
@@ -167,6 +173,8 @@ impl AppState {
             0,
             bytemuck::cast_slice(&[camera_uniform]),
         );
+
+        self.window.clear_input();
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

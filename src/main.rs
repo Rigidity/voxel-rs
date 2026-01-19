@@ -6,24 +6,24 @@ mod app_state;
 mod block;
 mod camera;
 mod chunk;
-mod input;
 mod level;
 mod projection;
 mod texture;
 mod voxel_mesh;
 mod voxel_renderer;
+mod window;
 
 pub use app::*;
 pub use app_state::*;
 pub use block::*;
 pub use camera::*;
 pub use chunk::*;
-pub use input::*;
 pub use level::*;
 pub use projection::*;
 pub use texture::*;
 pub use voxel_mesh::*;
 pub use voxel_renderer::*;
+pub use window::*;
 
 fn main() -> Result<()> {
     env_logger::init();
