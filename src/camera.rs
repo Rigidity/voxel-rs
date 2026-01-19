@@ -29,8 +29,9 @@ impl Camera {
         )
     }
 
-    pub fn update(&mut self, window: &mut Window) {
-        let speed = 0.5;
+    pub fn update(&mut self, window: &mut Window, delta_time: f32) {
+        let speed = 10.0 * delta_time;
+        let rotation_speed = 100.0 * delta_time;
 
         let (sin_yaw, cos_yaw) = self.yaw_degrees.to_radians().sin_cos();
         let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
@@ -61,19 +62,19 @@ impl Camera {
         }
 
         if window.is_key_pressed(KeyCode::ArrowLeft) {
-            self.yaw_degrees -= 0.75;
+            self.yaw_degrees -= rotation_speed;
         }
 
         if window.is_key_pressed(KeyCode::ArrowRight) {
-            self.yaw_degrees += 0.75;
+            self.yaw_degrees += rotation_speed;
         }
 
         if window.is_key_pressed(KeyCode::ArrowUp) {
-            self.pitch_degrees += 0.75;
+            self.pitch_degrees += rotation_speed;
         }
 
         if window.is_key_pressed(KeyCode::ArrowDown) {
-            self.pitch_degrees -= 0.75;
+            self.pitch_degrees -= rotation_speed;
         }
 
         if window.is_key_just_pressed(KeyCode::Escape) {

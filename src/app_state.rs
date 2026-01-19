@@ -20,9 +20,9 @@ pub struct AppState {
     camera_bind_group: wgpu::BindGroup,
     level: Level,
     window: Window,
-    // FPS tracking
     frame_count: u32,
     last_fps_print_time: Instant,
+    last_frame_time: Instant,
 }
 
 impl AppState {
@@ -75,7 +75,7 @@ impl AppState {
             desired_maximum_frame_latency: 2,
         };
 
-        let camera = Camera::new(Vec3::new(0.0, 0.0, 640.0), -90.0, 0.0);
+        let camera = Camera::new(Vec3::new(0.0, 0.0, 280.0), -90.0, 0.0);
         let projection = Projection::new(config.width, config.height, 60.0, 0.1, 1000.0);
         let camera_uniform = CameraUniform::new(&camera, &projection);
 
@@ -115,6 +115,7 @@ impl AppState {
             VoxelRenderer::new(&device, &queue, config.format, &camera_bind_group_layout);
         let level = Level::new(&device, &voxel_renderer);
 
+        let now = Instant::now();
         Ok(Self {
             surface,
             device,
@@ -130,7 +131,8 @@ impl AppState {
             level,
             window,
             frame_count: 0,
-            last_fps_print_time: Instant::now(),
+            last_fps_print_time: now,
+            last_frame_time: now,
         })
     }
 
@@ -163,8 +165,13 @@ impl AppState {
     }
 
     pub fn update(&mut self) {
+        // Calculate delta time
+        let now = Instant::now();
+        let delta_time = now.duration_since(self.last_frame_time).as_secs_f32();
+        self.last_frame_time = now;
+
         self.level.update(&self.device);
-        self.camera.update(&mut self.window);
+        self.camera.update(&mut self.window, delta_time);
 
         let camera_uniform = CameraUniform::new(&self.camera, &self.projection);
 
