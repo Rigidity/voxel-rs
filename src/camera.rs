@@ -1,4 +1,7 @@
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec3};
+use winit::keyboard::KeyCode;
+
+use crate::Input;
 
 pub struct Camera {
     pub position: Vec3,
@@ -25,39 +28,54 @@ impl Camera {
             Vec3::Y,
         )
     }
-}
 
-pub struct Projection {
-    aspect: f32,
-    fovy: f32,
-    znear: f32,
-    zfar: f32,
-}
+    pub fn update(&mut self, input: &Input) {
+        let speed = 0.5;
 
-impl Projection {
-    pub fn new(width: u32, height: u32, fovy: f32, znear: f32, zfar: f32) -> Self {
-        Self {
-            aspect: width as f32 / height as f32,
-            fovy: fovy.to_radians(),
-            znear,
-            zfar,
+        let (sin_yaw, cos_yaw) = self.yaw_degrees.to_radians().sin_cos();
+        let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
+        let right = Vec3::new(-sin_yaw, 0.0, cos_yaw).normalize();
+
+        if input.is_key_pressed(KeyCode::KeyA) {
+            self.position -= right * speed;
         }
-    }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.aspect = width as f32 / height as f32;
-    }
+        if input.is_key_pressed(KeyCode::KeyD) {
+            self.position += right * speed;
+        }
 
-    pub fn projection_matrix(&self) -> Mat4 {
-        OPENGL_TO_WGPU_MATRIX
-            * Mat4::perspective_rh_gl(self.fovy, self.aspect, self.znear, self.zfar)
+        if input.is_key_pressed(KeyCode::KeyW) {
+            self.position += forward * speed;
+        }
+
+        if input.is_key_pressed(KeyCode::KeyS) {
+            self.position -= forward * speed;
+        }
+
+        if input.is_key_pressed(KeyCode::Space) {
+            self.position.y += speed;
+        }
+
+        if input.is_key_pressed(KeyCode::ShiftLeft) {
+            self.position.y -= speed;
+        }
+
+        if input.is_key_pressed(KeyCode::ArrowLeft) {
+            self.yaw_degrees -= 0.75;
+        }
+
+        if input.is_key_pressed(KeyCode::ArrowRight) {
+            self.yaw_degrees += 0.75;
+        }
+
+        if input.is_key_pressed(KeyCode::ArrowUp) {
+            self.pitch_degrees += 0.75;
+        }
+
+        if input.is_key_pressed(KeyCode::ArrowDown) {
+            self.pitch_degrees -= 0.75;
+        }
+
+        self.pitch_degrees = self.pitch_degrees.clamp(-89.0, 89.0);
     }
 }
-
-#[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: Mat4 = Mat4::from_cols(
-    Vec4::new(1.0, 0.0, 0.0, 0.0),
-    Vec4::new(0.0, 1.0, 0.0, 0.0),
-    Vec4::new(0.0, 0.0, 0.5, 0.0),
-    Vec4::new(0.0, 0.0, 0.5, 1.0),
-);

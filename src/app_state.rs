@@ -1,10 +1,10 @@
-use std::{collections::HashSet, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 use winit::{keyboard::KeyCode, window::Window};
 
-use crate::{Camera, Level, Projection, Texture, VoxelRenderer};
+use crate::{Camera, Input, Level, Projection, Texture, VoxelRenderer};
 
 pub struct AppState {
     surface: wgpu::Surface<'static>,
@@ -20,7 +20,7 @@ pub struct AppState {
     camera_bind_group: wgpu::BindGroup,
     level: Level,
     window: Arc<Window>,
-    pressed_keys: HashSet<KeyCode>,
+    input: Input,
     // FPS tracking
     frame_count: u32,
     last_fps_print_time: Instant,
@@ -130,7 +130,7 @@ impl AppState {
             camera_bind_group,
             level,
             window,
-            pressed_keys: HashSet::new(),
+            input: Input::default(),
             frame_count: 0,
             last_fps_print_time: Instant::now(),
         })
@@ -141,11 +141,7 @@ impl AppState {
     }
 
     pub fn set_key_pressed(&mut self, key: KeyCode, pressed: bool) {
-        if pressed {
-            self.pressed_keys.insert(key);
-        } else {
-            self.pressed_keys.remove(&key);
-        }
+        self.input.set_key_pressed(key, pressed);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -162,54 +158,7 @@ impl AppState {
 
     pub fn update(&mut self) {
         self.level.update(&self.device);
-
-        let speed = 0.5;
-
-        let (sin_yaw, cos_yaw) = self.camera.yaw_degrees.to_radians().sin_cos();
-        let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
-        let right = Vec3::new(-sin_yaw, 0.0, cos_yaw).normalize();
-
-        if self.pressed_keys.contains(&KeyCode::KeyA) {
-            self.camera.position -= right * speed;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::KeyD) {
-            self.camera.position += right * speed;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::KeyW) {
-            self.camera.position += forward * speed;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::KeyS) {
-            self.camera.position -= forward * speed;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::Space) {
-            self.camera.position.y += speed;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::ShiftLeft) {
-            self.camera.position.y -= speed;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::ArrowLeft) {
-            self.camera.yaw_degrees -= 0.75;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::ArrowRight) {
-            self.camera.yaw_degrees += 0.75;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::ArrowUp) {
-            self.camera.pitch_degrees += 0.75;
-        }
-
-        if self.pressed_keys.contains(&KeyCode::ArrowDown) {
-            self.camera.pitch_degrees -= 0.75;
-        }
-
-        self.camera.pitch_degrees = self.camera.pitch_degrees.clamp(-89.0, 89.0);
+        self.camera.update(&self.input);
 
         let camera_uniform = CameraUniform::new(&self.camera, &self.projection);
 
