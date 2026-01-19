@@ -81,10 +81,11 @@ impl Camera {
         }
 
         if window.is_mouse_locked() {
-            let pos = window.relative_mouse_position();
+            let delta = window.mouse_delta();
+            let sensitivity = 0.1;
 
-            self.yaw_degrees += pos.x as f32 / 10.0;
-            self.pitch_degrees -= pos.y as f32 / 10.0;
+            self.yaw_degrees += delta.0 as f32 * sensitivity;
+            self.pitch_degrees -= delta.1 as f32 * sensitivity;
         }
 
         self.pitch_degrees = self.pitch_degrees.clamp(-89.0, 89.0);

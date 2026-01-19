@@ -12,7 +12,7 @@ pub struct Window {
     pressed_keys: HashSet<KeyCode>,
     is_mouse_locked: bool,
     mouse_position: Option<PhysicalPosition<f64>>,
-    relative_mouse_position: PhysicalPosition<f64>,
+    mouse_delta: (f64, f64),
 }
 
 impl From<&Window> for wgpu::SurfaceTarget<'_> {
@@ -29,7 +29,7 @@ impl Window {
             pressed_keys: HashSet::new(),
             is_mouse_locked: false,
             mouse_position: None,
-            relative_mouse_position: PhysicalPosition::new(0.0, 0.0),
+            mouse_delta: (0.0, 0.0),
         }
     }
 
@@ -73,8 +73,8 @@ impl Window {
         self.just_pressed_keys.contains(&key)
     }
 
-    pub fn relative_mouse_position(&self) -> PhysicalPosition<f64> {
-        self.relative_mouse_position
+    pub fn mouse_delta(&self) -> (f64, f64) {
+        self.mouse_delta
     }
 
     pub fn update_mouse_position(&mut self, position: Option<PhysicalPosition<f64>>) {
@@ -82,8 +82,8 @@ impl Window {
     }
 
     pub fn update_relative_mouse_position(&mut self, delta: (f64, f64)) {
-        self.relative_mouse_position.x += delta.0;
-        self.relative_mouse_position.y += delta.1;
+        self.mouse_delta.0 += delta.0;
+        self.mouse_delta.1 += delta.1;
     }
 
     pub fn update_key_state(&mut self, key: KeyCode, pressed: bool) {
@@ -97,7 +97,7 @@ impl Window {
 
     pub fn clear_input(&mut self) {
         self.just_pressed_keys.clear();
-        self.relative_mouse_position = PhysicalPosition::new(0.0, 0.0);
+        self.mouse_delta = (0.0, 0.0);
     }
 
     pub fn is_mouse_locked(&self) -> bool {
