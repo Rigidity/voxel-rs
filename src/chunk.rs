@@ -1,8 +1,7 @@
 use glam::IVec3;
 use noise::{NoiseFn, Perlin};
-use wgpu::util::DeviceExt;
 
-use crate::{Block, VoxelMesh};
+use crate::{Block, VoxelMesh, VoxelRenderer};
 
 pub const CHUNK_SIZE: usize = 32;
 
@@ -23,24 +22,11 @@ pub struct Chunk {
 impl Chunk {
     pub fn new(
         device: &wgpu::Device,
-        chunk_position_bind_group_layout: &wgpu::BindGroupLayout,
+        renderer: &VoxelRenderer,
         position: IVec3,
         perlin: &Perlin,
     ) -> Self {
-        let position_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Chunk Position Buffer"),
-            contents: bytemuck::cast_slice(&[ChunkUniform::new(position)]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: chunk_position_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: position_buffer.as_entire_binding(),
-            }],
-            label: Some("chunk_position_bind_group"),
-        });
+        let bind_group = renderer.new_chunk_position_bind_group(device, position);
 
         let mut block_data = [Block::Air; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 
@@ -123,24 +109,6 @@ impl Chunk {
         if let Some(mesh) = &self.mesh {
             render_pass.set_bind_group(2, &self.bind_group, &[]);
             mesh.draw(render_pass);
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct ChunkUniform {
-    chunk_position: [f32; 3],
-}
-
-impl ChunkUniform {
-    fn new(chunk_position: IVec3) -> Self {
-        Self {
-            chunk_position: [
-                chunk_position.x as f32 * CHUNK_SIZE as f32,
-                chunk_position.y as f32 * CHUNK_SIZE as f32,
-                chunk_position.z as f32 * CHUNK_SIZE as f32,
-            ],
         }
     }
 }

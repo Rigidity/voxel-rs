@@ -2,17 +2,14 @@ use glam::IVec3;
 use indexmap::IndexMap;
 use noise::Perlin;
 
-use crate::{Block, CHUNK_SIZE, Chunk, Vertex, VoxelMeshBuilder};
+use crate::{Block, CHUNK_SIZE, Chunk, Vertex, VoxelMeshBuilder, VoxelRenderer};
 
 pub struct Level {
     chunks: IndexMap<IVec3, Chunk>,
 }
 
 impl Level {
-    pub fn new(
-        device: &wgpu::Device,
-        chunk_position_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, renderer: &VoxelRenderer) -> Self {
         let mut chunks = IndexMap::new();
 
         let perlin = Perlin::new(1337);
@@ -21,8 +18,7 @@ impl Level {
             for y in -8..8 {
                 for z in -8..8 {
                     let chunk_pos = IVec3::new(x, y, z);
-                    let chunk =
-                        Chunk::new(device, chunk_position_bind_group_layout, chunk_pos, &perlin);
+                    let chunk = Chunk::new(device, renderer, chunk_pos, &perlin);
                     chunks.insert(chunk_pos, chunk);
                 }
             }

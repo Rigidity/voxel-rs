@@ -9,6 +9,7 @@ mod chunk;
 mod level;
 mod texture;
 mod voxel_mesh;
+mod voxel_renderer;
 
 pub use app::*;
 pub use app_state::*;
@@ -18,6 +19,7 @@ pub use chunk::*;
 pub use level::*;
 pub use texture::*;
 pub use voxel_mesh::*;
+pub use voxel_renderer::*;
 
 fn main() -> Result<()> {
     env_logger::init();
