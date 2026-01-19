@@ -15,7 +15,7 @@ impl Level {
         let perlin = Perlin::new(1337);
 
         for x in -8..8 {
-            for y in -8..8 {
+            for y in -1..1 {
                 for z in -8..8 {
                     let chunk_pos = IVec3::new(x, y, z);
                     let chunk = Chunk::new(device, renderer, chunk_pos, &perlin);
