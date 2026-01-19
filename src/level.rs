@@ -1,5 +1,6 @@
 use glam::IVec3;
 use indexmap::IndexMap;
+use noise::Perlin;
 
 use crate::{Block, CHUNK_SIZE, Chunk, Vertex, VoxelMeshBuilder};
 
@@ -14,11 +15,14 @@ impl Level {
     ) -> Self {
         let mut chunks = IndexMap::new();
 
-        for x in -4..4 {
-            for y in -4..4 {
-                for z in -4..4 {
+        let perlin = Perlin::new(1337);
+
+        for x in -8..8 {
+            for y in -8..8 {
+                for z in -8..8 {
                     let chunk_pos = IVec3::new(x, y, z);
-                    let chunk = Chunk::new(device, chunk_position_bind_group_layout, chunk_pos);
+                    let chunk =
+                        Chunk::new(device, chunk_position_bind_group_layout, chunk_pos, &perlin);
                     chunks.insert(chunk_pos, chunk);
                 }
             }
@@ -59,12 +63,24 @@ impl Level {
 
                             let global_pos = start_pos + IVec3::new(x as i32, y as i32, z as i32);
 
-                            let left = self.get_block(global_pos - IVec3::X).is_none();
-                            let right = self.get_block(global_pos + IVec3::X).is_none();
-                            let front = self.get_block(global_pos + IVec3::Z).is_none();
-                            let back = self.get_block(global_pos - IVec3::Z).is_none();
-                            let top = self.get_block(global_pos + IVec3::Y).is_none();
-                            let bottom = self.get_block(global_pos - IVec3::Y).is_none();
+                            let left = self
+                                .get_block(global_pos - IVec3::X)
+                                .is_none_or(|block| block == Block::Air);
+                            let right = self
+                                .get_block(global_pos + IVec3::X)
+                                .is_none_or(|block| block == Block::Air);
+                            let front = self
+                                .get_block(global_pos + IVec3::Z)
+                                .is_none_or(|block| block == Block::Air);
+                            let back = self
+                                .get_block(global_pos - IVec3::Z)
+                                .is_none_or(|block| block == Block::Air);
+                            let top = self
+                                .get_block(global_pos + IVec3::Y)
+                                .is_none_or(|block| block == Block::Air);
+                            let bottom = self
+                                .get_block(global_pos - IVec3::Y)
+                                .is_none_or(|block| block == Block::Air);
 
                             let x = x as f32;
                             let y = y as f32;

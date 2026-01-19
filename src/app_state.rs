@@ -119,7 +119,7 @@ impl AppState {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera = Camera::new(Vec3::new(0.0, 0.0, 160.0), -90.0, 0.0);
+        let camera = Camera::new(Vec3::new(0.0, 0.0, 640.0), -90.0, 0.0);
         let projection = Projection::new(config.width, config.height, 60.0, 0.1, 1000.0);
         let camera_uniform = CameraUniform::new(&camera, &projection);
 
@@ -277,7 +277,7 @@ impl AppState {
     pub fn update(&mut self) {
         self.level.update(&self.device);
 
-        let speed = 0.1;
+        let speed = 0.5;
 
         let (sin_yaw, cos_yaw) = self.camera.yaw_degrees.to_radians().sin_cos();
         let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
