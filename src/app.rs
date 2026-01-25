@@ -91,9 +91,20 @@ impl ApplicationHandler for App {
                 event,
                 is_synthetic: _,
             } => {
-                if let PhysicalKey::Code(key) = event.physical_key {
+                if let PhysicalKey::Code(key) = event.physical_key
+                    && !event.repeat
+                {
                     state.input.set_key_state(key, event.state.is_pressed());
                 }
+            }
+            WindowEvent::MouseInput {
+                device_id: _,
+                state: event_state,
+                button,
+            } => {
+                state
+                    .input
+                    .set_mouse_button_state(button, event_state.is_pressed());
             }
             _ => {}
         }

@@ -26,14 +26,68 @@ impl World {
     }
 
     pub fn get_block(&self, world_pos: IVec3) -> Option<Block> {
-        let chunk_size = CHUNK_SIZE as i32;
-        let chunk_pos = world_pos.div_euclid(IVec3::splat(chunk_size));
+        let chunk_pos = self.chunk_pos(world_pos);
+        let local_pos = self.local_pos(world_pos);
         let chunk = self.chunks.get(&chunk_pos)?;
-        let block_pos = world_pos.rem_euclid(IVec3::splat(chunk_size));
-        Some(chunk.get_block(USizeVec3::new(
-            block_pos.x as usize,
-            block_pos.y as usize,
-            block_pos.z as usize,
-        )))
+        Some(chunk.get_block(local_pos))
+    }
+
+    pub fn set_block(&mut self, world_pos: IVec3, block: Block) {
+        let chunk_pos = self.chunk_pos(world_pos);
+        let local_pos = self.local_pos(world_pos);
+        let Some(chunk) = self.chunks.get_mut(&chunk_pos) else {
+            return;
+        };
+        chunk.set_block(local_pos, block);
+        chunk.set_dirty();
+
+        if local_pos.x == 0
+            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos - IVec3::X))
+        {
+            neighbor.set_dirty();
+        }
+
+        if local_pos.y == 0
+            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos - IVec3::Y))
+        {
+            neighbor.set_dirty();
+        }
+
+        if local_pos.z == 0
+            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos - IVec3::Z))
+        {
+            neighbor.set_dirty();
+        }
+
+        if local_pos.x == CHUNK_SIZE - 1
+            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos + IVec3::X))
+        {
+            neighbor.set_dirty();
+        }
+
+        if local_pos.y == CHUNK_SIZE - 1
+            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos + IVec3::Y))
+        {
+            neighbor.set_dirty();
+        }
+
+        if local_pos.z == CHUNK_SIZE - 1
+            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos + IVec3::Z))
+        {
+            neighbor.set_dirty();
+        }
+    }
+
+    pub fn chunk_pos(&self, world_pos: IVec3) -> IVec3 {
+        world_pos.div_euclid(IVec3::splat(CHUNK_SIZE as i32))
+    }
+
+    pub fn local_pos(&self, world_pos: IVec3) -> USizeVec3 {
+        let local_pos = world_pos.rem_euclid(IVec3::splat(CHUNK_SIZE as i32));
+        USizeVec3::new(
+            local_pos.x as usize,
+            local_pos.y as usize,
+            local_pos.z as usize,
+        )
     }
 }

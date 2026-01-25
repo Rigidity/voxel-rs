@@ -15,6 +15,21 @@ impl Aabb {
         Self { min, max }
     }
 
+    pub fn min(&self) -> Vec3 {
+        self.min
+    }
+
+    pub fn max(&self) -> Vec3 {
+        self.max
+    }
+
+    pub fn translate(&self, translation: Vec3) -> Self {
+        Self {
+            min: self.min + translation,
+            max: self.max + translation,
+        }
+    }
+
     pub fn intersects(&self, other: &Aabb) -> bool {
         self.min.x < other.max.x + EPSILON
             && self.max.x > other.min.x - EPSILON

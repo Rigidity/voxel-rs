@@ -10,8 +10,9 @@ pub struct GameState {
 }
 
 impl GameState {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        let player = Player::new(Vec3::new(0.0, 0.0, 280.0), Vec3::new(0.8, 1.8, 0.8), 1.4);
+        let player = Player::new(Vec3::new(8.0, 60.0, 8.0), Vec3::new(0.4, 1.8, 0.4), 1.4);
         let camera = Camera::new(
             player.camera_position(),
             player.yaw_degrees,
@@ -29,7 +30,7 @@ impl GameState {
     }
 
     pub fn tick(&mut self, input: &mut Input, delta: f32) {
-        self.player.update(input, delta);
+        self.player.update(input, delta, &mut self.world);
         self.camera.position = self.player.camera_position();
         self.camera.yaw_degrees = self.player.yaw_degrees;
         self.camera.pitch_degrees = self.player.pitch_degrees;

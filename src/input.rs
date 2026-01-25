@@ -1,23 +1,21 @@
 use std::collections::HashSet;
 
 use glam::Vec2;
-use winit::keyboard::KeyCode;
+use winit::{event::MouseButton, keyboard::KeyCode};
 
+#[derive(Default)]
 pub struct Input {
     mouse_motion: Vec2,
     is_mouse_locked: bool,
     just_pressed_keys: HashSet<KeyCode>,
     pressed_keys: HashSet<KeyCode>,
+    just_pressed_mouse_buttons: HashSet<MouseButton>,
+    pressed_mouse_buttons: HashSet<MouseButton>,
 }
 
 impl Input {
     pub fn new() -> Self {
-        Self {
-            mouse_motion: Vec2::ZERO,
-            is_mouse_locked: false,
-            just_pressed_keys: HashSet::new(),
-            pressed_keys: HashSet::new(),
-        }
+        Self::default()
     }
 
     pub fn mouse_motion(&self) -> Vec2 {
@@ -53,8 +51,26 @@ impl Input {
         }
     }
 
+    pub fn is_mouse_button_pressed(&self, button: MouseButton) -> bool {
+        self.pressed_mouse_buttons.contains(&button)
+    }
+
+    pub fn is_mouse_button_just_pressed(&self, button: MouseButton) -> bool {
+        self.just_pressed_mouse_buttons.contains(&button)
+    }
+
+    pub fn set_mouse_button_state(&mut self, button: MouseButton, pressed: bool) {
+        if pressed {
+            self.pressed_mouse_buttons.insert(button);
+            self.just_pressed_mouse_buttons.insert(button);
+        } else {
+            self.pressed_mouse_buttons.remove(&button);
+        }
+    }
+
     pub fn finish_tick(&mut self) {
         self.just_pressed_keys.clear();
+        self.just_pressed_mouse_buttons.clear();
         self.mouse_motion = Vec2::ZERO;
     }
 }

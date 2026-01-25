@@ -34,4 +34,8 @@ impl Chunk {
     pub fn clear_dirty(&mut self) {
         self.is_dirty = false;
     }
+
+    pub fn set_dirty(&mut self) {
+        self.is_dirty = true;
+    }
 }
