@@ -1,15 +1,18 @@
 use glam::IVec3;
+use indexmap::IndexMap;
 use wgpu::util::DeviceExt;
 
-use crate::{CHUNK_SIZE, Level, Texture, Vertex};
+use crate::{CHUNK_SIZE, ChunkMesh, ChunkVertex, Texture, World};
 
-pub struct VoxelRenderer {
+pub struct VoxelPipeline {
     pipeline: wgpu::RenderPipeline,
     texture_bind_group: wgpu::BindGroup,
     chunk_position_bind_group_layout: wgpu::BindGroupLayout,
+    chunk_meshes: IndexMap<IVec3, ChunkMesh>,
+    chunk_position_bind_groups: IndexMap<IVec3, wgpu::BindGroup>,
 }
 
-impl VoxelRenderer {
+impl VoxelPipeline {
     pub fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -91,7 +94,7 @@ impl VoxelRenderer {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::descriptor()],
+                buffers: &[ChunkVertex::descriptor()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -133,19 +136,48 @@ impl VoxelRenderer {
             pipeline,
             texture_bind_group: diffuse_bind_group,
             chunk_position_bind_group_layout,
+            chunk_meshes: IndexMap::new(),
+            chunk_position_bind_groups: IndexMap::new(),
         }
     }
 
-    pub fn render(
-        &self,
-        render_pass: &mut wgpu::RenderPass,
-        camera_bind_group: &wgpu::BindGroup,
-        level: &Level,
-    ) {
+    pub fn update(&mut self, device: &wgpu::Device, world: &mut World) {
+        for (chunk_pos, chunk) in &world.chunks {
+            if chunk.is_dirty()
+                && let Some(mesh) =
+                    ChunkMesh::from_chunk_data(device, *chunk_pos, &chunk.data, world)
+            {
+                self.chunk_meshes.insert(*chunk_pos, mesh);
+
+                if !self.chunk_position_bind_groups.contains_key(chunk_pos) {
+                    self.chunk_position_bind_groups.insert(
+                        *chunk_pos,
+                        self.new_chunk_position_bind_group(device, *chunk_pos),
+                    );
+                }
+            }
+        }
+
+        for (_, chunk) in &mut world.chunks {
+            chunk.clear_dirty();
+        }
+
+        self.chunk_meshes
+            .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
+
+        self.chunk_position_bind_groups
+            .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
+    }
+
+    pub fn render(&self, render_pass: &mut wgpu::RenderPass, camera_bind_group: &wgpu::BindGroup) {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.set_bind_group(1, camera_bind_group, &[]);
-        level.render(render_pass);
+
+        for (chunk_pos, mesh) in &self.chunk_meshes {
+            render_pass.set_bind_group(2, &self.chunk_position_bind_groups[chunk_pos], &[]);
+            mesh.draw(render_pass);
+        }
     }
 
     pub fn new_chunk_position_bind_group(
