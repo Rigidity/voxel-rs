@@ -4,7 +4,7 @@ use glam::Vec3;
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalPosition, keyboard::KeyCode};
 
-use crate::{Camera, Level, Projection, Texture, VoxelRenderer, Window};
+use crate::{Camera, Level, Player, Projection, Texture, VoxelRenderer, Window};
 
 pub struct AppState {
     surface: wgpu::Surface<'static>,
@@ -16,6 +16,7 @@ pub struct AppState {
     depth_texture: Texture,
     camera: Camera,
     projection: Projection,
+    player: Player,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     level: Level,
@@ -126,6 +127,7 @@ impl AppState {
             depth_texture,
             camera,
             projection,
+            player: Player::new(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.8, 1.8, 0.8), 1.8),
             camera_buffer,
             camera_bind_group,
             level,
@@ -171,7 +173,10 @@ impl AppState {
         self.last_frame_time = now;
 
         self.level.update(&self.device);
-        self.camera.update(&mut self.window, delta_time);
+        self.player.update(&mut self.window, delta_time);
+        self.camera.position = self.player.camera_position();
+        self.camera.yaw_degrees = self.player.yaw_degrees;
+        self.camera.pitch_degrees = self.player.pitch_degrees;
 
         let camera_uniform = CameraUniform::new(&self.camera, &self.projection);
 

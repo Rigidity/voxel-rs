@@ -1,6 +1,5 @@
 use glam::IVec3;
 use indexmap::IndexMap;
-use noise::Perlin;
 
 use crate::{Block, CHUNK_SIZE, Chunk, Vertex, VoxelMeshBuilder, VoxelRenderer};
 
@@ -12,13 +11,11 @@ impl Level {
     pub fn new(device: &wgpu::Device, renderer: &VoxelRenderer) -> Self {
         let mut chunks = IndexMap::new();
 
-        let perlin = Perlin::new(1337);
-
         for x in -8..8 {
             for y in -1..1 {
                 for z in -8..8 {
                     let chunk_pos = IVec3::new(x, y, z);
-                    let chunk = Chunk::new(device, renderer, chunk_pos, &perlin);
+                    let chunk = Chunk::new(device, renderer, chunk_pos);
                     chunks.insert(chunk_pos, chunk);
                 }
             }
@@ -74,22 +71,22 @@ impl Level {
 
                             let left = self
                                 .get_block(global_pos - IVec3::X)
-                                .is_none_or(|block| block == Block::Air);
+                                .is_none_or(|block| !block.is_solid());
                             let right = self
                                 .get_block(global_pos + IVec3::X)
-                                .is_none_or(|block| block == Block::Air);
+                                .is_none_or(|block| !block.is_solid());
                             let front = self
                                 .get_block(global_pos + IVec3::Z)
-                                .is_none_or(|block| block == Block::Air);
+                                .is_none_or(|block| !block.is_solid());
                             let back = self
                                 .get_block(global_pos - IVec3::Z)
-                                .is_none_or(|block| block == Block::Air);
+                                .is_none_or(|block| !block.is_solid());
                             let top = self
                                 .get_block(global_pos + IVec3::Y)
-                                .is_none_or(|block| block == Block::Air);
+                                .is_none_or(|block| !block.is_solid());
                             let bottom = self
                                 .get_block(global_pos - IVec3::Y)
-                                .is_none_or(|block| block == Block::Air);
+                                .is_none_or(|block| !block.is_solid());
 
                             let x = x as u32;
                             let y = y as u32;

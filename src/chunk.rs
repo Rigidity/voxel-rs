@@ -1,14 +1,8 @@
-use glam::IVec3;
-use noise::{NoiseFn, Perlin};
+use glam::{IVec3, USizeVec3};
 
-use crate::{Block, VoxelMesh, VoxelRenderer};
+use crate::{Block, ChunkData, VoxelMesh, VoxelRenderer, WorldGenerator};
 
 pub const CHUNK_SIZE: usize = 32;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct ChunkData {
-    blocks: [Block; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE],
-}
 
 #[derive(Debug)]
 pub struct Chunk {
@@ -20,58 +14,13 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub fn new(
-        device: &wgpu::Device,
-        renderer: &VoxelRenderer,
-        position: IVec3,
-        perlin: &Perlin,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, renderer: &VoxelRenderer, position: IVec3) -> Self {
         let bind_group = renderer.new_chunk_position_bind_group(device, position);
 
-        let mut block_data = [Block::Air; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
-
-        for x in 0..CHUNK_SIZE {
-            for y in 0..CHUNK_SIZE {
-                for z in 0..CHUNK_SIZE {
-                    let global_pos =
-                        position * CHUNK_SIZE as i32 + IVec3::new(x as i32, y as i32, z as i32);
-
-                    // Use multiple octaves of noise for more interesting terrain
-                    let scale1 = 24.0;
-                    let scale2 = 12.0;
-                    let scale3 = 6.0;
-
-                    let noise1 = perlin.get([
-                        global_pos.x as f64 / scale1,
-                        global_pos.y as f64 / scale1,
-                        global_pos.z as f64 / scale1,
-                    ]);
-
-                    let noise2 = perlin.get([
-                        global_pos.x as f64 / scale2 + 100.0,
-                        global_pos.y as f64 / scale2 + 100.0,
-                        global_pos.z as f64 / scale2 + 100.0,
-                    ]) * 0.5;
-
-                    let noise3 = perlin.get([
-                        global_pos.x as f64 / scale3 + 200.0,
-                        global_pos.y as f64 / scale3 + 200.0,
-                        global_pos.z as f64 / scale3 + 200.0,
-                    ]) * 0.25;
-
-                    // Combine the octaves for richer detail
-                    let combined_noise = noise1 + noise2 + noise3;
-
-                    // Create interesting cave-like structures
-                    if combined_noise > 0.01 {
-                        block_data[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE] = Block::Rock;
-                    }
-                }
-            }
-        }
+        let world_generator = WorldGenerator::new();
 
         Self {
-            data: ChunkData { blocks: block_data },
+            data: world_generator.generate_chunk(position),
             bind_group,
             mesh: None,
             is_dirty: true,
@@ -84,11 +33,11 @@ impl Chunk {
     }
 
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> Block {
-        self.data.blocks[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+        self.data.get_block(USizeVec3::new(x, y, z))
     }
 
     pub fn set_block(&mut self, x: usize, y: usize, z: usize, block: Block) {
-        self.data.blocks[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE] = block;
+        self.data.set_block(USizeVec3::new(x, y, z), block);
         self.set_dirty();
     }
 
