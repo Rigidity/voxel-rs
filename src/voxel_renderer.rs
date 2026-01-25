@@ -16,7 +16,7 @@ impl VoxelRenderer {
         texture_format: wgpu::TextureFormat,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        let diffuse_bytes = include_bytes!("rock.png");
+        let diffuse_bytes = include_bytes!("../textures.png");
         let diffuse_texture =
             Texture::from_bytes(device, queue, diffuse_bytes, "rock.png").unwrap();
 
