@@ -6,6 +6,7 @@ use crate::{Block, CHUNK_SIZE, ChunkData, World};
 
 #[derive(Debug)]
 pub struct ChunkMesh {
+    position_bind_group: wgpu::BindGroup,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     indices: u32,
@@ -13,6 +14,7 @@ pub struct ChunkMesh {
 
 impl ChunkMesh {
     pub fn draw(&self, render_pass: &mut wgpu::RenderPass) {
+        render_pass.set_bind_group(2, &self.position_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.draw_indexed(0..self.indices, 0, 0..1);
@@ -23,6 +25,7 @@ impl ChunkMesh {
         position: IVec3,
         data: &ChunkData,
         world: &World,
+        position_bind_group: wgpu::BindGroup,
     ) -> Option<Self> {
         let start_pos = position * CHUNK_SIZE as i32;
 
@@ -588,7 +591,7 @@ impl ChunkMesh {
             }
         }
 
-        mesh.build(device)
+        mesh.build(device, position_bind_group)
     }
 }
 
@@ -607,7 +610,11 @@ impl ChunkMeshBuilder {
         self.vertices.len() as u32
     }
 
-    pub fn build(self, device: &wgpu::Device) -> Option<ChunkMesh> {
+    pub fn build(
+        self,
+        device: &wgpu::Device,
+        position_bind_group: wgpu::BindGroup,
+    ) -> Option<ChunkMesh> {
         if self.indices.is_empty() {
             return None;
         }
@@ -625,6 +632,7 @@ impl ChunkMeshBuilder {
         });
 
         Some(ChunkMesh {
+            position_bind_group,
             vertex_buffer,
             index_buffer,
             indices: self.indices.len() as u32,

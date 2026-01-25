@@ -9,7 +9,6 @@ pub struct VoxelPipeline {
     texture_bind_group: wgpu::BindGroup,
     chunk_position_bind_group_layout: wgpu::BindGroupLayout,
     chunk_meshes: IndexMap<IVec3, ChunkMesh>,
-    chunk_position_bind_groups: IndexMap<IVec3, wgpu::BindGroup>,
 }
 
 impl VoxelPipeline {
@@ -137,23 +136,23 @@ impl VoxelPipeline {
             texture_bind_group: diffuse_bind_group,
             chunk_position_bind_group_layout,
             chunk_meshes: IndexMap::new(),
-            chunk_position_bind_groups: IndexMap::new(),
         }
     }
 
     pub fn update(&mut self, device: &wgpu::Device, world: &mut World) {
         for (chunk_pos, chunk) in &world.chunks {
-            if chunk.is_dirty()
-                && let Some(mesh) =
-                    ChunkMesh::from_chunk_data(device, *chunk_pos, &chunk.data, world)
-            {
-                self.chunk_meshes.insert(*chunk_pos, mesh);
+            if chunk.is_dirty() {
+                let position_bind_group = self.new_chunk_position_bind_group(device, *chunk_pos);
+                let mesh = ChunkMesh::from_chunk_data(
+                    device,
+                    *chunk_pos,
+                    &chunk.data,
+                    world,
+                    position_bind_group,
+                );
 
-                if !self.chunk_position_bind_groups.contains_key(chunk_pos) {
-                    self.chunk_position_bind_groups.insert(
-                        *chunk_pos,
-                        self.new_chunk_position_bind_group(device, *chunk_pos),
-                    );
+                if let Some(mesh) = mesh {
+                    self.chunk_meshes.insert(*chunk_pos, mesh);
                 }
             }
         }
@@ -164,9 +163,6 @@ impl VoxelPipeline {
 
         self.chunk_meshes
             .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
-
-        self.chunk_position_bind_groups
-            .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
     }
 
     pub fn render(&self, render_pass: &mut wgpu::RenderPass, camera_bind_group: &wgpu::BindGroup) {
@@ -174,8 +170,7 @@ impl VoxelPipeline {
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.set_bind_group(1, camera_bind_group, &[]);
 
-        for (chunk_pos, mesh) in &self.chunk_meshes {
-            render_pass.set_bind_group(2, &self.chunk_position_bind_groups[chunk_pos], &[]);
+        for mesh in self.chunk_meshes.values() {
             mesh.draw(render_pass);
         }
     }
