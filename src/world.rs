@@ -82,22 +82,19 @@ impl World {
         self.generation_tasks
             .retain(|chunk_pos, receiver| match receiver.try_recv() {
                 Ok(data) => {
-                    self.chunks.insert(*chunk_pos, Chunk::new(data));
+                    for x in -1..=1 {
+                        for y in -1..=1 {
+                            for z in -1..=1 {
+                                let neighbor = *chunk_pos + IVec3::new(x, y, z);
 
-                    let neighbors = [
-                        *chunk_pos - IVec3::X,
-                        *chunk_pos + IVec3::X,
-                        *chunk_pos - IVec3::Y,
-                        *chunk_pos + IVec3::Y,
-                        *chunk_pos - IVec3::Z,
-                        *chunk_pos + IVec3::Z,
-                    ];
-
-                    for neighbor in neighbors {
-                        if let Some(neighbor) = self.chunks.get_mut(&neighbor) {
-                            neighbor.set_dirty();
+                                if let Some(neighbor) = self.chunks.get_mut(&neighbor) {
+                                    neighbor.set_dirty();
+                                }
+                            }
                         }
                     }
+
+                    self.chunks.insert(*chunk_pos, Chunk::new(data));
 
                     false
                 }
