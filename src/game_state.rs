@@ -1,4 +1,4 @@
-use glam::Vec3;
+use glam::{IVec3, Vec3};
 
 use crate::{Camera, Input, Player, Projection, World, WorldGenerator};
 
@@ -30,6 +30,13 @@ impl GameState {
     }
 
     pub fn tick(&mut self, input: &mut Input, delta: f32) {
+        let player_pos = IVec3::new(
+            self.player.position.x as i32,
+            self.player.position.y as i32,
+            self.player.position.z as i32,
+        );
+        let player_chunk_pos = World::chunk_pos(player_pos);
+        self.world.tick(player_chunk_pos);
         self.player.update(input, delta, &mut self.world);
         self.camera.position = self.player.camera_position();
         self.camera.yaw_degrees = self.player.yaw_degrees;

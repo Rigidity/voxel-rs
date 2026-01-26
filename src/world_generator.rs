@@ -3,6 +3,7 @@ use noise::{NoiseFn, Perlin};
 
 use crate::{Block, CHUNK_SIZE, ChunkData};
 
+#[derive(Debug, Clone, Copy)]
 pub struct WorldGenerator {
     perlin: Perlin,
 }

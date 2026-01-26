@@ -1,5 +1,6 @@
 use glam::IVec3;
 use indexmap::IndexMap;
+use oneshot::TryRecvError;
 use wgpu::util::DeviceExt;
 
 use crate::{CHUNK_SIZE, ChunkMesh, ChunkVertex, Texture, World};
@@ -9,6 +10,7 @@ pub struct VoxelPipeline {
     texture_bind_group: wgpu::BindGroup,
     chunk_position_bind_group_layout: wgpu::BindGroupLayout,
     chunk_meshes: IndexMap<IVec3, ChunkMesh>,
+    mesh_tasks: IndexMap<IVec3, oneshot::Receiver<Option<ChunkMesh>>>,
 }
 
 impl VoxelPipeline {
@@ -136,33 +138,107 @@ impl VoxelPipeline {
             texture_bind_group: diffuse_bind_group,
             chunk_position_bind_group_layout,
             chunk_meshes: IndexMap::new(),
+            mesh_tasks: IndexMap::new(),
         }
     }
 
-    pub fn update(&mut self, device: &wgpu::Device, world: &mut World) {
-        for (chunk_pos, chunk) in &world.chunks {
-            if chunk.is_dirty() {
-                let position_bind_group = self.new_chunk_position_bind_group(device, *chunk_pos);
-                let mesh = ChunkMesh::from_chunk_data(
-                    device,
-                    *chunk_pos,
-                    &chunk.data,
-                    world,
-                    position_bind_group,
-                );
-
-                if let Some(mesh) = mesh {
-                    self.chunk_meshes.insert(*chunk_pos, mesh);
-                }
-            }
-        }
-
-        for (_, chunk) in &mut world.chunks {
-            chunk.clear_dirty();
-        }
-
+    pub fn tick(&mut self, device: &wgpu::Device, world: &mut World) {
         self.chunk_meshes
             .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
+
+        self.mesh_tasks
+            .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
+
+        let mut chunks_to_mesh = world
+            .chunks
+            .keys()
+            .copied()
+            .filter(|chunk_pos| {
+                world.chunks[chunk_pos].is_dirty() && !self.mesh_tasks.contains_key(chunk_pos)
+            })
+            .collect::<Vec<_>>();
+
+        chunks_to_mesh.sort_by_key(|chunk_pos| world.chunk_sort_key(*chunk_pos));
+
+        for chunk_pos in chunks_to_mesh {
+            if self.mesh_tasks.len() >= rayon::current_num_threads() {
+                break;
+            }
+
+            let neighbors = [
+                chunk_pos - IVec3::X,
+                chunk_pos + IVec3::X,
+                chunk_pos - IVec3::Y,
+                chunk_pos + IVec3::Y,
+                chunk_pos - IVec3::Z,
+                chunk_pos + IVec3::Z,
+            ];
+
+            let mut should_generate = true;
+
+            for neighbor in neighbors {
+                should_generate &=
+                    world.chunks.contains_key(&neighbor) || !world.is_visible_chunk(neighbor);
+            }
+
+            if !should_generate {
+                continue;
+            }
+
+            let (sender, receiver) = oneshot::channel();
+
+            let mut world_clone = World::new(world.generator);
+            world_clone.center_pos = world.center_pos;
+            world_clone.chunks = world.chunks.clone();
+            world_clone.generation_radius = world.generation_radius;
+
+            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Chunk Position Buffer"),
+                contents: bytemuck::cast_slice(&[ChunkUniform::new(chunk_pos)]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.chunk_position_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.as_entire_binding(),
+                }],
+                label: Some("chunk_position_bind_group"),
+            });
+
+            let device_clone = device.clone();
+
+            rayon::spawn(move || {
+                let mesh = ChunkMesh::from_chunk_data(
+                    &device_clone,
+                    chunk_pos,
+                    &world_clone.chunks[&chunk_pos].data,
+                    &world_clone,
+                    bind_group,
+                );
+                sender.send(mesh).ok();
+            });
+
+            self.mesh_tasks.insert(chunk_pos, receiver);
+        }
+
+        self.mesh_tasks
+            .retain(|chunk_pos, receiver| match receiver.try_recv() {
+                Ok(mesh) => {
+                    if let Some(chunk) = world.chunks.get_mut(chunk_pos) {
+                        if let Some(mesh) = mesh {
+                            self.chunk_meshes.insert(*chunk_pos, mesh);
+                        }
+
+                        chunk.clear_dirty();
+                    }
+
+                    false
+                }
+                Err(TryRecvError::Disconnected) => false,
+                Err(TryRecvError::Empty) => true,
+            });
     }
 
     pub fn render(&self, render_pass: &mut wgpu::RenderPass, camera_bind_group: &wgpu::BindGroup) {
@@ -173,27 +249,6 @@ impl VoxelPipeline {
         for mesh in self.chunk_meshes.values() {
             mesh.draw(render_pass);
         }
-    }
-
-    pub fn new_chunk_position_bind_group(
-        &self,
-        device: &wgpu::Device,
-        position: IVec3,
-    ) -> wgpu::BindGroup {
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Chunk Position Buffer"),
-            contents: bytemuck::cast_slice(&[ChunkUniform::new(position)]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.chunk_position_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
-            label: Some("chunk_position_bind_group"),
-        })
     }
 }
 

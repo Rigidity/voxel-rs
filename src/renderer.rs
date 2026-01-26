@@ -136,8 +136,8 @@ impl Renderer {
         );
     }
 
-    pub fn update_world(&mut self, world: &mut World) {
-        self.voxel_pipeline.update(&self.device, world);
+    pub fn tick(&mut self, world: &mut World) {
+        self.voxel_pipeline.tick(&self.device, world);
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

@@ -77,7 +77,7 @@ impl AppState {
 
         self.input.finish_tick();
 
-        self.renderer.update_world(&mut self.game_state.world);
+        self.renderer.tick(&mut self.game_state.world);
 
         // FPS calculation
         self.frame_count += 1;
