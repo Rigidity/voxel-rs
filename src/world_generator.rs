@@ -34,7 +34,7 @@ impl WorldGenerator {
                             * CHUNK_SIZE as f32
                             + Vec3::new(x as f32, y as f32, z as f32);
 
-                    if global_pos.y < (-global_pos.x.abs() + -global_pos.z.abs()) / 0.2 {
+                    if global_pos.y < (-global_pos.x.abs() + -global_pos.z.abs()) / 0.01 {
                         data.set_block(local_pos, Block::Rock);
                     }
                 }

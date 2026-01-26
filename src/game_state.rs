@@ -12,7 +12,7 @@ pub struct GameState {
 impl GameState {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        let player = Player::new(Vec3::new(8.0, 100.0, 8.0), Vec3::new(0.4, 1.8, 0.4), 1.4);
+        let player = Player::new(Vec3::new(8.0, 100.0, 8.0), Vec3::new(0.6, 1.8, 0.6), 1.4);
         let camera = Camera::new(
             player.camera_position(),
             player.yaw_degrees,

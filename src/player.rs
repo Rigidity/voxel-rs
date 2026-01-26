@@ -3,6 +3,8 @@ use winit::{event::MouseButton, keyboard::KeyCode};
 
 use crate::{Aabb, Block, Input, World};
 
+const COYOTE_TIME: f32 = 0.075;
+
 #[derive(Debug, Clone)]
 pub struct Player {
     pub position: Vec3,
@@ -11,7 +13,7 @@ pub struct Player {
     pub yaw_degrees: f32,
     pub pitch_degrees: f32,
     pub eye_height: f32,
-    pub is_grounded: bool,
+    pub grounded_timer: f32,
 }
 
 impl Player {
@@ -23,7 +25,7 @@ impl Player {
             yaw_degrees: -90.0,
             pitch_degrees: 0.0,
             eye_height,
-            is_grounded: false,
+            grounded_timer: 0.0,
         }
     }
 
@@ -36,6 +38,8 @@ impl Player {
     }
 
     pub fn update(&mut self, input: &mut Input, delta: f32, world: &mut World) {
+        self.grounded_timer = (self.grounded_timer - delta).max(0.0);
+
         let walk_speed = 6.0;
         let gravity = -32.0;
         let jump_velocity = 10.0;
@@ -70,15 +74,16 @@ impl Player {
         self.velocity.x = movement_dir.x * walk_speed;
         self.velocity.z = movement_dir.z * walk_speed;
 
-        self.velocity.y += gravity * delta;
-        self.velocity.y = self.velocity.y.max(-50.0);
-
-        if input.is_key_pressed(KeyCode::Space) && self.is_grounded {
-            self.velocity.y = jump_velocity;
-            self.is_grounded = false;
+        if self.grounded_timer == 0.0 {
+            self.velocity.y += gravity * delta;
         }
 
-        println!("position: {:?}", self.position);
+        self.velocity.y = self.velocity.y.max(-50.0);
+
+        if input.is_key_pressed(KeyCode::Space) && self.grounded_timer > 0.0 {
+            self.velocity.y = jump_velocity;
+            self.grounded_timer = 0.0;
+        }
 
         self.move_with_collision(self.velocity * delta, world);
 
@@ -133,8 +138,6 @@ impl Player {
     }
 
     fn move_with_collision(&mut self, mut delta: Vec3, world: &World) {
-        self.is_grounded = false;
-
         for _ in 0..3 {
             let collision = self
                 .check_collision(delta, world)
@@ -143,7 +146,7 @@ impl Player {
 
             if let Some(Collision { time, normal }) = collision {
                 if normal.y == 1.0 {
-                    self.is_grounded = true;
+                    self.grounded_timer = COYOTE_TIME;
                 }
 
                 const TOLERANCE: f32 = 1.0 / 4096.0;
