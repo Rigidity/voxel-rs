@@ -1,5 +1,5 @@
-use glam::{DVec3, IVec3, USizeVec3};
-use noise::{NoiseFn, Perlin};
+use glam::{IVec3, USizeVec3, Vec3};
+use noise::Perlin;
 
 use crate::{Block, CHUNK_SIZE, ChunkData};
 
@@ -29,34 +29,12 @@ impl WorldGenerator {
                 for z in 0..CHUNK_SIZE {
                     let local_pos = USizeVec3::new(x, y, z);
 
-                    let global_pos = DVec3::from(chunk_pos) * CHUNK_SIZE as f64
-                        + DVec3::new(x as f64, y as f64, z as f64);
+                    let global_pos =
+                        Vec3::new(chunk_pos.x as f32, chunk_pos.y as f32, chunk_pos.z as f32)
+                            * CHUNK_SIZE as f32
+                            + Vec3::new(x as f32, y as f32, z as f32);
 
-                    let scale1 = 24.0;
-                    let scale2 = 12.0;
-                    let scale3 = 6.0;
-
-                    let noise1 = self.perlin.get([
-                        global_pos.x / scale1,
-                        global_pos.y / scale1,
-                        global_pos.z / scale1,
-                    ]);
-
-                    let noise2 = self.perlin.get([
-                        global_pos.x / scale2 + 100.0,
-                        global_pos.y / scale2 + 100.0,
-                        global_pos.z / scale2 + 100.0,
-                    ]) * 0.5;
-
-                    let noise3 = self.perlin.get([
-                        global_pos.x / scale3 + 200.0,
-                        global_pos.y / scale3 + 200.0,
-                        global_pos.z / scale3 + 200.0,
-                    ]) * 0.25;
-
-                    let combined_noise = noise1 + noise2 + noise3;
-
-                    if combined_noise > 0.01 {
+                    if global_pos.y < (-global_pos.x.abs() + -global_pos.z.abs()) / 0.2 {
                         data.set_block(local_pos, Block::Rock);
                     }
                 }

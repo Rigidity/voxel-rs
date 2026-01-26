@@ -71,11 +71,14 @@ impl Player {
         self.velocity.z = movement_dir.z * walk_speed;
 
         self.velocity.y += gravity * delta;
+        self.velocity.y = self.velocity.y.max(-50.0);
 
         if input.is_key_pressed(KeyCode::Space) && self.is_grounded {
             self.velocity.y = jump_velocity;
             self.is_grounded = false;
         }
+
+        println!("position: {:?}", self.position);
 
         self.move_with_collision(self.velocity * delta, world);
 
