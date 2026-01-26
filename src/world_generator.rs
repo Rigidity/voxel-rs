@@ -32,7 +32,6 @@ impl WorldGenerator {
                     let global_pos = DVec3::from(chunk_pos) * CHUNK_SIZE as f64
                         + DVec3::new(x as f64, y as f64, z as f64);
 
-                    // Use multiple octaves of noise for more interesting terrain
                     let scale1 = 24.0;
                     let scale2 = 12.0;
                     let scale3 = 6.0;
@@ -55,10 +54,8 @@ impl WorldGenerator {
                         global_pos.z / scale3 + 200.0,
                     ]) * 0.25;
 
-                    // Combine the octaves for richer detail
                     let combined_noise = noise1 + noise2 + noise3;
 
-                    // Create interesting cave-like structures
                     if combined_noise > 0.01 {
                         data.set_block(local_pos, Block::Rock);
                     }
