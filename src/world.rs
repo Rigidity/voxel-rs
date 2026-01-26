@@ -20,7 +20,7 @@ impl World {
             generator,
             center_pos: IVec3::ZERO,
             generation_tasks: IndexMap::new(),
-            generation_radius: 12,
+            generation_radius: 8,
         }
     }
 
@@ -67,7 +67,7 @@ impl World {
 
             let (sender, receiver) = oneshot::channel();
 
-            let generator = self.generator;
+            let generator = self.generator.clone();
 
             rayon::spawn(move || {
                 let data = generator.generate_chunk(chunk_pos);

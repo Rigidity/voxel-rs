@@ -1,9 +1,9 @@
-use glam::{IVec3, USizeVec3, Vec3};
-use noise::Perlin;
+use glam::{DVec3, IVec3, USizeVec3};
+use noise::{NoiseFn, Perlin};
 
 use crate::{Block, CHUNK_SIZE, ChunkData};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct WorldGenerator {
     perlin: Perlin,
 }
@@ -30,11 +30,18 @@ impl WorldGenerator {
                     let local_pos = USizeVec3::new(x, y, z);
 
                     let global_pos =
-                        Vec3::new(chunk_pos.x as f32, chunk_pos.y as f32, chunk_pos.z as f32)
-                            * CHUNK_SIZE as f32
-                            + Vec3::new(x as f32, y as f32, z as f32);
+                        DVec3::new(chunk_pos.x as f64, chunk_pos.y as f64, chunk_pos.z as f64)
+                            * CHUNK_SIZE as f64
+                            + DVec3::new(x as f64, y as f64, z as f64);
 
-                    if global_pos.y < (-global_pos.x.abs() + -global_pos.z.abs()) / 0.01 {
+                    let value = self.sample(
+                        DVec3::new(global_pos.x / 2.0, global_pos.y, global_pos.z / 2.0),
+                        3,
+                        1.0 / CHUNK_SIZE as f64,
+                        1.0,
+                    );
+
+                    if value > 0.2 {
                         data.set_block(local_pos, Block::Rock);
                     }
                 }
@@ -42,5 +49,23 @@ impl WorldGenerator {
         }
 
         data
+    }
+
+    fn sample(&self, global_pos: DVec3, octaves: u32, frequency: f64, amplitude: f64) -> f64 {
+        let mut value = 0.0;
+        let mut frequency = frequency;
+        let mut amplitude = amplitude;
+
+        for _ in 0..octaves {
+            value += self.perlin.get([
+                global_pos.x * frequency,
+                global_pos.y * frequency,
+                global_pos.z * frequency,
+            ]) * amplitude;
+            frequency *= 2.0;
+            amplitude *= 0.5;
+        }
+
+        value
     }
 }

@@ -109,7 +109,7 @@ impl Player {
 
         if input.is_mouse_locked() {
             let delta = input.mouse_motion();
-            let sensitivity = 0.015;
+            let sensitivity = 0.0025;
 
             self.yaw += delta.x * sensitivity;
             self.pitch -= delta.y * sensitivity;

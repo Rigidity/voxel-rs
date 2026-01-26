@@ -20,9 +20,9 @@ impl VoxelPipeline {
         texture_format: wgpu::TextureFormat,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        let diffuse_bytes = include_bytes!("../textures.png");
+        let diffuse_bytes = include_bytes!("../textures/Dirt.png");
         let diffuse_texture =
-            Texture::from_bytes(device, queue, diffuse_bytes, "rock.png").unwrap();
+            Texture::from_bytes(device, queue, diffuse_bytes, "Dirt.png").unwrap();
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
