@@ -10,8 +10,8 @@ pub struct Player {
     pub position: Vec3,
     pub velocity: Vec3,
     pub size: Vec3,
-    pub yaw_degrees: f32,
-    pub pitch_degrees: f32,
+    pub yaw: f32,
+    pub pitch: f32,
     pub eye_height: f32,
     pub grounded_timer: f32,
 }
@@ -22,8 +22,8 @@ impl Player {
             position,
             velocity: Vec3::ZERO,
             size,
-            yaw_degrees: -90.0,
-            pitch_degrees: 0.0,
+            yaw: (-90.0f32).to_radians(),
+            pitch: 0.0f32.to_radians(),
             eye_height,
             grounded_timer: 0.0,
         }
@@ -43,9 +43,9 @@ impl Player {
         let walk_speed = 6.0;
         let gravity = -32.0;
         let jump_velocity = 10.0;
-        let rotation_speed = 100.0 * delta;
+        let rotation_speed = 2.0 * delta;
 
-        let (sin_yaw, cos_yaw) = self.yaw_degrees.to_radians().sin_cos();
+        let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
         let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
         let right = Vec3::new(-sin_yaw, 0.0, cos_yaw).normalize();
 
@@ -88,19 +88,19 @@ impl Player {
         self.move_with_collision(self.velocity * delta, world);
 
         if input.is_key_pressed(KeyCode::ArrowLeft) {
-            self.yaw_degrees -= rotation_speed;
+            self.yaw -= rotation_speed;
         }
 
         if input.is_key_pressed(KeyCode::ArrowRight) {
-            self.yaw_degrees += rotation_speed;
+            self.yaw += rotation_speed;
         }
 
         if input.is_key_pressed(KeyCode::ArrowUp) {
-            self.pitch_degrees += rotation_speed;
+            self.pitch += rotation_speed;
         }
 
         if input.is_key_pressed(KeyCode::ArrowDown) {
-            self.pitch_degrees -= rotation_speed;
+            self.pitch -= rotation_speed;
         }
 
         if input.is_key_just_pressed(KeyCode::Escape) {
@@ -109,16 +109,18 @@ impl Player {
 
         if input.is_mouse_locked() {
             let delta = input.mouse_motion();
-            let sensitivity = 0.1;
+            let sensitivity = 0.015;
 
-            self.yaw_degrees += delta.x * sensitivity;
-            self.pitch_degrees -= delta.y * sensitivity;
+            self.yaw += delta.x * sensitivity;
+            self.pitch -= delta.y * sensitivity;
         }
 
-        self.pitch_degrees = self.pitch_degrees.clamp(-89.0, 89.0);
+        self.pitch = self
+            .pitch
+            .clamp((-89.0f32).to_radians(), 89.0f32.to_radians());
 
-        let (sin_yaw, cos_yaw) = self.yaw_degrees.to_radians().sin_cos();
-        let (sin_pitch, cos_pitch) = self.pitch_degrees.to_radians().sin_cos();
+        let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
+        let (sin_pitch, cos_pitch) = self.pitch.sin_cos();
         let forward_with_pitch =
             Vec3::new(cos_yaw * cos_pitch, sin_pitch, sin_yaw * cos_pitch).normalize();
 

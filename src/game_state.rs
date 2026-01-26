@@ -13,12 +13,8 @@ impl GameState {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let player = Player::new(Vec3::new(8.0, 100.0, 8.0), Vec3::new(0.6, 1.8, 0.6), 1.4);
-        let camera = Camera::new(
-            player.camera_position(),
-            player.yaw_degrees,
-            player.pitch_degrees,
-        );
-        let projection = Projection::new(0, 0, 60.0, 0.1, 1000.0);
+        let camera = Camera::new(player.camera_position(), player.yaw, player.pitch);
+        let projection = Projection::new(0, 0, 75.0, 0.1, 1000.0);
         let world = World::new(WorldGenerator::new());
 
         Self {
@@ -39,7 +35,7 @@ impl GameState {
         self.world.tick(player_chunk_pos);
         self.player.update(input, delta, &mut self.world);
         self.camera.position = self.player.camera_position();
-        self.camera.yaw_degrees = self.player.yaw_degrees;
-        self.camera.pitch_degrees = self.player.pitch_degrees;
+        self.camera.yaw = self.player.yaw;
+        self.camera.pitch = self.player.pitch;
     }
 }

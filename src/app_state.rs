@@ -56,8 +56,12 @@ impl AppState {
                     log::warn!("Failed to set cursor position: {error}");
                 }
 
-                if let Err(error) = self.window.set_cursor_grab(CursorGrabMode::Locked) {
-                    log::warn!("Failed to lock mouse: {error}");
+                if let Err(error_locked) = self.window.set_cursor_grab(CursorGrabMode::Locked)
+                    && let Err(error_confined) =
+                        self.window.set_cursor_grab(CursorGrabMode::Confined)
+                {
+                    log::warn!("Failed to lock mouse: {error_locked}");
+                    log::warn!("Failed to confine mouse: {error_confined}");
                 }
             } else {
                 if let Err(error) = self.window.set_cursor_grab(CursorGrabMode::None) {
