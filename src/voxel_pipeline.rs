@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use oneshot::TryRecvError;
 use wgpu::util::DeviceExt;
 
-use crate::{CHUNK_SIZE, ChunkMesh, ChunkVertex, Texture, World};
+use crate::{CHUNK_SIZE, ChunkMesh, ChunkVertex, RelevantChunks, Texture, World};
 
 pub struct VoxelPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -187,10 +187,7 @@ impl VoxelPipeline {
 
             let (sender, receiver) = oneshot::channel();
 
-            let mut world_clone = World::new(world.generator);
-            world_clone.center_pos = world.center_pos;
-            world_clone.chunks = world.chunks.clone();
-            world_clone.generation_radius = world.generation_radius;
+            let relevant_chunks = RelevantChunks::from_world(world, chunk_pos);
 
             let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Chunk Position Buffer"),
@@ -207,16 +204,11 @@ impl VoxelPipeline {
                 label: Some("chunk_position_bind_group"),
             });
 
-            let device_clone = device.clone();
+            let device = device.clone();
 
             rayon::spawn(move || {
-                let mesh = ChunkMesh::from_chunk_data(
-                    &device_clone,
-                    chunk_pos,
-                    &world_clone.chunks[&chunk_pos].data,
-                    &world_clone,
-                    bind_group,
-                );
+                let mesh =
+                    ChunkMesh::from_chunk_data(&device, chunk_pos, &relevant_chunks, bind_group);
                 sender.send(mesh).ok();
             });
 
