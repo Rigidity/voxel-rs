@@ -21,7 +21,7 @@ impl AppState {
     pub async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let input = Input::new();
 
-        let mut builder = TextureArrayBuilder::new();
+        let mut builder = TextureArrayBuilder::new(16, 16);
 
         let game_state = GameState::new(Some(&mut builder));
         let textures = builder.into_textures();

@@ -70,7 +70,7 @@ impl TextureArray {
                         view_dimension: wgpu::TextureViewDimension::D2,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     },
-                    count: NonZero::new(2),
+                    count: NonZero::new(texture_views.len() as u32),
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,

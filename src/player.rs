@@ -165,7 +165,10 @@ impl Player {
                 && let Some(result) =
                     voxel_raycast(self.camera_position(), forward_with_pitch, 5.0, world)
             {
-                world.set_block(result.previous_position, Some(Block::new(0, 0)));
+                world.set_block(
+                    result.previous_position,
+                    Some(Block::new(registry.block_id("test"), 0)),
+                );
             }
         }
     }

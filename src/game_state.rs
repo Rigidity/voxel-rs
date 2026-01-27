@@ -3,7 +3,7 @@ use std::sync::Arc;
 use glam::{IVec3, Vec3};
 
 use crate::{
-    Camera, DIRT, Input, Player, Projection, ROCK, Registry, TextureArrayBuilder, World,
+    Camera, DIRT, Input, Player, Projection, ROCK, Registry, TEST, TextureArrayBuilder, World,
     WorldGenerator,
 };
 
@@ -25,6 +25,7 @@ impl GameState {
         let mut registry = Registry::new();
         registry.register_block_type(DIRT);
         registry.register_block_type(ROCK);
+        registry.register_block_type(TEST);
 
         if let Some(builder) = texture_builder {
             for block_id in registry.block_ids().collect::<Vec<_>>() {

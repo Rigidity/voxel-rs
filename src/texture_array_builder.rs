@@ -1,13 +1,27 @@
 use image::DynamicImage;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct TextureArrayBuilder {
     textures: Vec<DynamicImage>,
+    width: u32,
+    height: u32,
 }
 
 impl TextureArrayBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(width: u32, height: u32) -> Self {
+        Self {
+            textures: Vec::new(),
+            width,
+            height,
+        }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
     }
 
     pub fn add_bytes(&mut self, bytes: &[u8]) -> u32 {
