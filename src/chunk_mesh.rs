@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::IVec3;
 use wgpu::util::DeviceExt;
 
-use crate::{CHUNK_SIZE, RelevantChunks};
+use crate::{CHUNK_SIZE, REGISTRY, RelevantChunks};
 
 #[derive(Debug)]
 pub struct ChunkMesh {
@@ -34,9 +34,11 @@ impl ChunkMesh {
                     let world_pos =
                         center_pos * CHUNK_SIZE as i32 + IVec3::new(x as i32, y as i32, z as i32);
 
-                    let Some(_block) = data.get_block(world_pos) else {
+                    let Some(block) = data.get_block(world_pos) else {
                         continue;
                     };
+
+                    let texture_index = REGISTRY.block_type(block.id).texture_index(block.data);
 
                     let left = data.get_block(world_pos - IVec3::X).is_none();
                     let right = data.get_block(world_pos + IVec3::X).is_none();
@@ -84,24 +86,28 @@ impl ChunkMesh {
                             [1, 0],
                             [0, 0, 1],
                             tr_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [0, 0],
                             [0, 0, 1],
                             tl_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [0, 1],
                             [0, 0, 1],
                             bl_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [1, 1],
                             [0, 0, 1],
                             br_ao,
+                            texture_index,
                         ));
 
                         mesh.indices.extend_from_slice(&[
@@ -149,21 +155,29 @@ impl ChunkMesh {
                             [1, 0],
                             [0, 0, -1],
                             tl_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [0, 0],
                             [0, 0, -1],
                             tr_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [0, 1],
                             [0, 0, -1],
                             br_ao,
+                            texture_index,
                         ));
-                        mesh.vertices
-                            .push(ChunkVertex::new([x, y, z], [1, 1], [0, 0, -1], bl_ao));
+                        mesh.vertices.push(ChunkVertex::new(
+                            [x, y, z],
+                            [1, 1],
+                            [0, 0, -1],
+                            bl_ao,
+                            texture_index,
+                        ));
 
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -210,20 +224,28 @@ impl ChunkMesh {
                             [1, 0],
                             [-1, 0, 0],
                             tf_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [0, 0],
                             [-1, 0, 0],
                             tb_ao,
+                            texture_index,
                         ));
-                        mesh.vertices
-                            .push(ChunkVertex::new([x, y, z], [0, 1], [-1, 0, 0], bb_ao));
+                        mesh.vertices.push(ChunkVertex::new(
+                            [x, y, z],
+                            [0, 1],
+                            [-1, 0, 0],
+                            bb_ao,
+                            texture_index,
+                        ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [1, 1],
                             [-1, 0, 0],
                             bf_ao,
+                            texture_index,
                         ));
 
                         mesh.indices.extend_from_slice(&[
@@ -271,24 +293,28 @@ impl ChunkMesh {
                             [1, 0],
                             [1, 0, 0],
                             tb_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z + 1],
                             [0, 0],
                             [1, 0, 0],
                             tf_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [0, 1],
                             [1, 0, 0],
                             bf_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [1, 1],
                             [1, 0, 0],
                             bb_ao,
+                            texture_index,
                         ));
 
                         mesh.indices.extend_from_slice(&[
@@ -336,24 +362,28 @@ impl ChunkMesh {
                             [1, 1],
                             [0, 1, 0],
                             fr_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [1, 0],
                             [0, 1, 0],
                             br_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [0, 0],
                             [0, 1, 0],
                             bl_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [0, 1],
                             [0, 1, 0],
                             fl_ao,
+                            texture_index,
                         ));
 
                         mesh.indices.extend_from_slice(&[
@@ -401,21 +431,29 @@ impl ChunkMesh {
                             [1, 1],
                             [0, -1, 0],
                             br_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [1, 0],
                             [0, -1, 0],
                             fr_ao,
+                            texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [0, 0],
                             [0, -1, 0],
                             fl_ao,
+                            texture_index,
                         ));
-                        mesh.vertices
-                            .push(ChunkVertex::new([x, y, z], [0, 1], [0, -1, 0], bl_ao));
+                        mesh.vertices.push(ChunkVertex::new(
+                            [x, y, z],
+                            [0, 1],
+                            [0, -1, 0],
+                            bl_ao,
+                            texture_index,
+                        ));
 
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -483,12 +521,20 @@ impl ChunkMeshBuilder {
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct ChunkVertex {
     pub data: u32,
+    pub texture_index: u32,
 }
 
 impl ChunkVertex {
-    pub const ATTRIBS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Uint32];
+    pub const ATTRIBS: [wgpu::VertexAttribute; 2] =
+        wgpu::vertex_attr_array![0 => Uint32, 1 => Uint32];
 
-    pub fn new(position: [u32; 3], tex_coords: [u32; 2], _normal: [i32; 3], ao: u32) -> Self {
+    pub fn new(
+        position: [u32; 3],
+        tex_coords: [u32; 2],
+        _normal: [i32; 3],
+        ao: u32,
+        texture_index: u32,
+    ) -> Self {
         Self {
             data: (position[0] << 26)
                 | (position[1] << 20)
@@ -496,6 +542,7 @@ impl ChunkVertex {
                 | (tex_coords[0] << 13)
                 | (tex_coords[1] << 12)
                 | (ao << 10),
+            texture_index,
         }
     }
 

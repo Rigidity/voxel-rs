@@ -42,7 +42,13 @@ impl WorldGenerator {
                     );
 
                     if value > 0.2 {
-                        data.set_block(local_pos, Some(Block::new(REGISTRY.block_id("dirt"), 0)));
+                        let block_id = if global_pos.y < 0.0 {
+                            REGISTRY.block_id("rock")
+                        } else {
+                            REGISTRY.block_id("dirt")
+                        };
+
+                        data.set_block(local_pos, Some(Block::new(block_id, 0)));
                     }
                 }
             }

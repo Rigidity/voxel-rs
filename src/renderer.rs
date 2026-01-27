@@ -39,9 +39,14 @@ impl Renderer {
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: None,
-                required_features: wgpu::Features::empty(),
+                required_features:
+                    wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+                        | wgpu::Features::TEXTURE_BINDING_ARRAY,
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                required_limits: wgpu::Limits::default(),
+                required_limits: wgpu::Limits {
+                    max_binding_array_elements_per_shader_stage: 500_000,
+                    ..Default::default()
+                },
                 memory_hints: Default::default(),
                 trace: wgpu::Trace::Off,
             })

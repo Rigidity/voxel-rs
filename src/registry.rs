@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use crate::{BlockType, Dirt};
+use crate::{BlockType, Dirt, Rock};
 
 #[derive(Default)]
 pub struct Registry {
@@ -32,5 +32,6 @@ impl Registry {
 pub static REGISTRY: LazyLock<Registry> = LazyLock::new(|| {
     let mut registry = Registry::new();
     registry.register(Box::new(Dirt));
+    registry.register(Box::new(Rock));
     registry
 });

@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use oneshot::TryRecvError;
 use wgpu::util::DeviceExt;
 
-use crate::{CHUNK_SIZE, ChunkMesh, ChunkVertex, RelevantChunks, Texture, World};
+use crate::{CHUNK_SIZE, ChunkMesh, ChunkVertex, RelevantChunks, Texture, TextureArray, World};
 
 pub struct VoxelPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -20,47 +20,7 @@ impl VoxelPipeline {
         texture_format: wgpu::TextureFormat,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        let diffuse_bytes = include_bytes!("../textures/Dirt.png");
-        let diffuse_texture =
-            Texture::from_bytes(device, queue, diffuse_bytes, "Dirt.png").unwrap();
-
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-                label: Some("texture_bind_group_layout"),
-            });
-
-        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-            ],
-            label: Some("diffuse_bind_group"),
-        });
+        let texture_array = TextureArray::new(device, queue);
 
         let chunk_position_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -82,7 +42,7 @@ impl VoxelPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
-                &texture_bind_group_layout,
+                &texture_array.bind_group_layout,
                 camera_bind_group_layout,
                 &chunk_position_bind_group_layout,
             ],
@@ -135,7 +95,7 @@ impl VoxelPipeline {
 
         Self {
             pipeline,
-            texture_bind_group: diffuse_bind_group,
+            texture_bind_group: texture_array.bind_group,
             chunk_position_bind_group_layout,
             chunk_meshes: IndexMap::new(),
             mesh_tasks: IndexMap::new(),
