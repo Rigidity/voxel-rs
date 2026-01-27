@@ -36,6 +36,8 @@ impl VoxelPipeline {
 
         let textures = builder.into_textures();
 
+        log::info!("Generating an array of {} textures", textures.len());
+
         let texture_array = TextureArray::new(device, queue, textures);
 
         let chunk_position_bind_group_layout =

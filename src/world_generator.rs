@@ -1,7 +1,9 @@
 use glam::{DVec3, IVec3, USizeVec3};
 use noise::{NoiseFn, Perlin};
 
-use crate::{Block, BlockData, BlockKind, CHUNK_SIZE, ChunkData, Material, RockData, SoilData};
+use crate::{
+    Block, BlockData, BlockKind, CHUNK_SIZE, ChunkData, Material, RockData, RockType, SoilData,
+};
 
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
@@ -34,60 +36,59 @@ impl WorldGenerator {
                             * CHUNK_SIZE as f64
                             + DVec3::new(x as f64, y as f64, z as f64);
 
-                    let value = self.sample(
-                        DVec3::new(global_pos.x / 2.0, global_pos.y, global_pos.z / 2.0),
-                        3,
-                        1.0 / CHUNK_SIZE as f64,
-                        1.0,
-                    );
+                    let mountain_noise = self
+                        .perlin
+                        .get([global_pos.x / 400.0, global_pos.z / 400.0])
+                        * 40.0;
 
-                    if value > -0.1 {
-                        let block = if global_pos.x < 0.0 {
-                            let rock_data = RockData {
-                                material: if global_pos.y < 0.0 {
-                                    Material::Shale
-                                } else {
-                                    Material::Chalk
-                                },
-                            };
-                            Block::new(BlockKind::Rock, rock_data.encode())
-                        } else {
-                            let soil_data = SoilData {
-                                material: if global_pos.y < -200.0 {
-                                    Material::Loam
-                                } else if global_pos.y < -100.0 {
-                                    Material::Silt
-                                } else {
-                                    Material::Clay
-                                },
-                            };
-                            Block::new(BlockKind::Soil, soil_data.encode())
-                        };
+                    let hill_noise = self
+                        .perlin
+                        .get([global_pos.x / 150.0, global_pos.z / 150.0])
+                        * 20.0;
 
-                        data.set_block(local_pos, Some(block));
+                    let detail_noise =
+                        self.perlin.get([global_pos.x / 50.0, global_pos.z / 50.0]) * 8.0;
+
+                    let fine_noise =
+                        self.perlin.get([global_pos.x / 15.0, global_pos.z / 15.0]) * 3.0;
+
+                    let height = 32.0 + mountain_noise + hill_noise + detail_noise + fine_noise;
+
+                    if global_pos.y < height - 3.0 {
+                        data.set_block(
+                            local_pos,
+                            Some(Block::new(
+                                BlockKind::Rock,
+                                RockData {
+                                    rock_type: RockType::Rock,
+                                    material: Material::Shale,
+                                }
+                                .encode(),
+                            )),
+                        );
+                    } else if global_pos.y < height {
+                        data.set_block(
+                            local_pos,
+                            Some(Block::new(
+                                BlockKind::Soil,
+                                SoilData {
+                                    material: Material::Loam,
+                                    grass_material: if global_pos.y == height.ceil() - 1.0 {
+                                        Some(Material::LushGrass)
+                                    } else {
+                                        None
+                                    },
+                                }
+                                .encode(),
+                            )),
+                        );
+                    } else {
+                        data.set_block(local_pos, None);
                     }
                 }
             }
         }
 
         data
-    }
-
-    fn sample(&self, global_pos: DVec3, octaves: u32, frequency: f64, amplitude: f64) -> f64 {
-        let mut value = 0.0;
-        let mut frequency = frequency;
-        let mut amplitude = amplitude;
-
-        for _ in 0..octaves {
-            value += self.perlin.get([
-                global_pos.x * frequency,
-                global_pos.y * frequency,
-                global_pos.z * frequency,
-            ]) * amplitude;
-            frequency *= 2.0;
-            amplitude *= 0.5;
-        }
-
-        value
     }
 }
