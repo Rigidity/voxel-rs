@@ -59,43 +59,59 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
+                        let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Z);
+                        let ao1 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Z);
+                        let ao2 = calculate_ao(data, world_pos, -1, -1, 1, IVec3::Z);
+                        let ao3 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::Z);
+
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z + 1],
                             [1, 0],
                             [0, 0, 1],
-                            3,
+                            ao0,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [0, 0],
                             [0, 0, 1],
-                            3,
+                            ao1,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [0, 1],
                             [0, 0, 1],
-                            3,
+                            ao2,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [1, 1],
                             [0, 0, 1],
-                            3,
+                            ao3,
                             texture_index,
                         ));
 
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
+                        if ao0 + ao2 < ao1 + ao3 {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 3,
+                                index + 1,
+                                index + 2,
+                                index + 3,
+                            ]);
+                        } else {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 2,
+                                index + 2,
+                                index + 3,
+                                index,
+                            ]);
+                        }
                     }
 
                     // Back face (-Z)
@@ -107,43 +123,59 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
+                        let ao0 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::Z);
+                        let ao1 = calculate_ao(data, world_pos, 1, 1, -1, -IVec3::Z);
+                        let ao2 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Z);
+                        let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Z);
+
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [1, 0],
                             [0, 0, -1],
-                            3,
+                            ao0,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [0, 0],
                             [0, 0, -1],
-                            3,
+                            ao1,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [0, 1],
                             [0, 0, -1],
-                            3,
+                            ao2,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z],
                             [1, 1],
                             [0, 0, -1],
-                            3,
+                            ao3,
                             texture_index,
                         ));
 
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
+                        if ao0 + ao2 < ao1 + ao3 {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 3,
+                                index + 1,
+                                index + 2,
+                                index + 3,
+                            ]);
+                        } else {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 2,
+                                index + 2,
+                                index + 3,
+                                index,
+                            ]);
+                        }
                     }
 
                     // Left face (-X)
@@ -155,43 +187,59 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
+                        let ao0 = calculate_ao(data, world_pos, -1, 1, 1, -IVec3::X);
+                        let ao1 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::X);
+                        let ao2 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::X);
+                        let ao3 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::X);
+
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [1, 0],
                             [-1, 0, 0],
-                            3,
+                            ao0,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [0, 0],
                             [-1, 0, 0],
-                            3,
+                            ao1,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z],
                             [0, 1],
                             [-1, 0, 0],
-                            3,
+                            ao2,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [1, 1],
                             [-1, 0, 0],
-                            3,
+                            ao3,
                             texture_index,
                         ));
 
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
+                        if ao0 + ao2 < ao1 + ao3 {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 3,
+                                index + 1,
+                                index + 2,
+                                index + 3,
+                            ]);
+                        } else {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 2,
+                                index + 2,
+                                index + 3,
+                                index,
+                            ]);
+                        }
                     }
 
                     // Right face (+X)
@@ -203,43 +251,59 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
+                        let ao0 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::X);
+                        let ao1 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::X);
+                        let ao2 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::X);
+                        let ao3 = calculate_ao(data, world_pos, 1, -1, -1, IVec3::X);
+
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [1, 0],
                             [1, 0, 0],
-                            3,
+                            ao0,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z + 1],
                             [0, 0],
                             [1, 0, 0],
-                            3,
+                            ao1,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [0, 1],
                             [1, 0, 0],
-                            3,
+                            ao2,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [1, 1],
                             [1, 0, 0],
-                            3,
+                            ao3,
                             texture_index,
                         ));
 
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
+                        if ao0 + ao2 < ao1 + ao3 {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 3,
+                                index + 1,
+                                index + 2,
+                                index + 3,
+                            ]);
+                        } else {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 2,
+                                index + 2,
+                                index + 3,
+                                index,
+                            ]);
+                        }
                     }
 
                     // Top face (+Y)
@@ -251,43 +315,59 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
+                        let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Y);
+                        let ao1 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::Y);
+                        let ao2 = calculate_ao(data, world_pos, -1, 1, -1, IVec3::Y);
+                        let ao3 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Y);
+
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z + 1],
                             [1, 1],
                             [0, 1, 0],
-                            3,
+                            ao0,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [1, 0],
                             [0, 1, 0],
-                            3,
+                            ao1,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [0, 0],
                             [0, 1, 0],
-                            3,
+                            ao2,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [0, 1],
                             [0, 1, 0],
-                            3,
+                            ao3,
                             texture_index,
                         ));
 
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
+                        if ao0 + ao2 < ao1 + ao3 {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 3,
+                                index + 1,
+                                index + 2,
+                                index + 3,
+                            ]);
+                        } else {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 2,
+                                index + 2,
+                                index + 3,
+                                index,
+                            ]);
+                        }
                     }
 
                     // Bottom face (-Y)
@@ -299,43 +379,59 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
+                        let ao0 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Y);
+                        let ao1 = calculate_ao(data, world_pos, 1, -1, 1, -IVec3::Y);
+                        let ao2 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::Y);
+                        let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Y);
+
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [1, 1],
                             [0, -1, 0],
-                            3,
+                            ao0,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [1, 0],
                             [0, -1, 0],
-                            3,
+                            ao1,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [0, 0],
                             [0, -1, 0],
-                            3,
+                            ao2,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z],
                             [0, 1],
                             [0, -1, 0],
-                            3,
+                            ao3,
                             texture_index,
                         ));
 
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
+                        if ao0 + ao2 < ao1 + ao3 {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 3,
+                                index + 1,
+                                index + 2,
+                                index + 3,
+                            ]);
+                        } else {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 1,
+                                index + 2,
+                                index + 2,
+                                index + 3,
+                                index,
+                            ]);
+                        }
                     }
                 }
             }
@@ -343,6 +439,44 @@ impl ChunkMesh {
 
         mesh.build(device, position_bind_group)
     }
+}
+
+fn calculate_ao(
+    data: &RelevantChunks,
+    block_pos: IVec3,
+    dx: i32,
+    dy: i32,
+    dz: i32,
+    normal: IVec3,
+) -> u32 {
+    let vertex_offset = IVec3::new(dx, dy, dz);
+
+    let (axis1, axis2) = if normal.x.abs() == 1 {
+        (IVec3::Y, IVec3::Z)
+    } else if normal.y.abs() == 1 {
+        (IVec3::X, IVec3::Z)
+    } else {
+        (IVec3::X, IVec3::Y)
+    };
+
+    let side1_dir = vertex_offset.dot(axis1).signum();
+    let side2_dir = vertex_offset.dot(axis2).signum();
+
+    let side1_pos = block_pos + normal + axis1 * side1_dir;
+    let side2_pos = block_pos + normal + axis2 * side2_dir;
+    let corner_pos = block_pos + normal + axis1 * side1_dir + axis2 * side2_dir;
+
+    let side1 = data.get_block(side1_pos).is_some();
+    let side2 = data.get_block(side2_pos).is_some();
+    let corner = data.get_block(corner_pos).is_some();
+
+    let occlusion = if side1 && side2 {
+        3
+    } else {
+        (side1 as u32) + (side2 as u32) + (corner as u32)
+    };
+
+    3 - occlusion
 }
 
 #[derive(Debug, Default)]

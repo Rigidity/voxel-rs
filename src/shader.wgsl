@@ -35,7 +35,7 @@ fn vs_main(
 
     var out: VertexOutput;
     out.tex_coords = tex_coords;
-    out.ao = (f32(ao) / 1.5 + 1.0) / 3.0;
+    out.ao = 0.7 + f32(ao) * 0.1;
     out.clip_position = camera.view_proj * vec4<f32>(chunk_position + position, 1.0);
     out.texture_index = model.texture_index;
     return out;

@@ -57,8 +57,13 @@ impl BlockKind {
                 let mut image = DynamicImage::new(16, 16, ColorType::Rgba8);
 
                 for pixel in image.as_mut_rgba8().unwrap().pixels_mut() {
-                    *pixel = Rgba([0xFF, 0x00, 0xFF, 0xFF]);
+                    *pixel = Rgba([0xFF, 0xFF, 0xFF, 0xFF]);
                 }
+
+                image
+                    .as_mut_rgba8()
+                    .unwrap()
+                    .put_pixel(0, 0, Rgba([0xFF, 0x00, 0xFF, 0xFF]));
 
                 let texture_index = builder.add_image(image);
 

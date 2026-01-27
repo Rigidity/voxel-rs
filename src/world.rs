@@ -149,42 +149,16 @@ impl World {
             return;
         };
         chunk.set_block(local_pos, block);
-        chunk.set_dirty();
 
-        if local_pos.x == 0
-            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos - IVec3::X))
-        {
-            neighbor.set_dirty();
-        }
-
-        if local_pos.y == 0
-            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos - IVec3::Y))
-        {
-            neighbor.set_dirty();
-        }
-
-        if local_pos.z == 0
-            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos - IVec3::Z))
-        {
-            neighbor.set_dirty();
-        }
-
-        if local_pos.x == CHUNK_SIZE - 1
-            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos + IVec3::X))
-        {
-            neighbor.set_dirty();
-        }
-
-        if local_pos.y == CHUNK_SIZE - 1
-            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos + IVec3::Y))
-        {
-            neighbor.set_dirty();
-        }
-
-        if local_pos.z == CHUNK_SIZE - 1
-            && let Some(neighbor) = self.chunks.get_mut(&(chunk_pos + IVec3::Z))
-        {
-            neighbor.set_dirty();
+        for x in -1..=1 {
+            for y in -1..=1 {
+                for z in -1..=1 {
+                    let neighbor = chunk_pos + IVec3::new(x, y, z);
+                    if let Some(neighbor) = self.chunks.get_mut(&neighbor) {
+                        neighbor.set_dirty();
+                    }
+                }
+            }
         }
     }
 
