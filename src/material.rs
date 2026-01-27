@@ -28,9 +28,6 @@ pub enum Material {
     #[strum(to_string = "Loam")]
     Loam,
 
-    #[strum(to_string = "Silt")]
-    Silt,
-
     #[strum(to_string = "Clay")]
     Clay,
 
@@ -44,7 +41,6 @@ impl Material {
             Self::Shale => MaterialKind::Rock,
             Self::Chalk => MaterialKind::Rock,
             Self::Loam => MaterialKind::Soil,
-            Self::Silt => MaterialKind::Soil,
             Self::Clay => MaterialKind::Soil,
             Self::LushGrass => MaterialKind::Grass,
         }
@@ -53,10 +49,10 @@ impl Material {
     pub fn palette(&self) -> [Rgba<u8>; 4] {
         match self {
             Self::Shale => [
-                Rgba([0x9D, 0x9D, 0x9D, 0xFF]),
+                Rgba([0x94, 0x94, 0x94, 0xFF]),
                 Rgba([0x83, 0x83, 0x83, 0xFF]),
-                Rgba([0x71, 0x71, 0x71, 0xFF]),
-                Rgba([0x5B, 0x5B, 0x5B, 0xFF]),
+                Rgba([0x73, 0x73, 0x73, 0xFF]),
+                Rgba([0x65, 0x65, 0x65, 0xFF]),
             ],
             Self::Chalk => [
                 Rgba([0xE5, 0xE5, 0xD8, 0xFF]),
@@ -65,16 +61,10 @@ impl Material {
                 Rgba([0xC0, 0xC0, 0xB5, 0xFF]),
             ],
             Self::Loam => [
-                Rgba([0x7F, 0x69, 0x47, 0xFF]),
-                Rgba([0x76, 0x62, 0x44, 0xFF]),
-                Rgba([0x6B, 0x59, 0x3E, 0xFF]),
-                Rgba([0x64, 0x54, 0x3C, 0xFF]),
-            ],
-            Self::Silt => [
-                Rgba([0xAF, 0x92, 0x6A, 0xFF]),
-                Rgba([0xA3, 0x88, 0x62, 0xFF]),
-                Rgba([0x98, 0x7E, 0x5A, 0xFF]),
-                Rgba([0x8D, 0x74, 0x53, 0xFF]),
+                Rgba([0x84, 0x74, 0x5A, 0xFF]),
+                Rgba([0x7A, 0x6B, 0x54, 0xFF]),
+                Rgba([0x70, 0x62, 0x4E, 0xFF]),
+                Rgba([0x66, 0x59, 0x48, 0xFF]),
             ],
             Self::Clay => [
                 Rgba([0xA0, 0x5E, 0x4C, 0xFF]),
@@ -83,10 +73,10 @@ impl Material {
                 Rgba([0x7D, 0x47, 0x38, 0xFF]),
             ],
             Self::LushGrass => [
-                Rgba([0x34, 0x72, 0x34, 0xFF]),
-                Rgba([0x2E, 0x66, 0x2E, 0xFF]),
-                Rgba([0x28, 0x5A, 0x28, 0xFF]),
-                Rgba([0x22, 0x4E, 0x22, 0xFF]),
+                Rgba([0x34, 0x78, 0x34, 0xFF]),
+                Rgba([0x2E, 0x70, 0x2E, 0xFF]),
+                Rgba([0x28, 0x68, 0x28, 0xFF]),
+                Rgba([0x22, 0x60, 0x22, 0xFF]),
             ],
         }
     }

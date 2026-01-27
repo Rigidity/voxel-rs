@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::IVec3;
 use wgpu::util::DeviceExt;
 
-use crate::{CHUNK_SIZE, Registry, RelevantChunks};
+use crate::{BlockFace, CHUNK_SIZE, Registry, RelevantChunks};
 
 #[derive(Debug)]
 pub struct ChunkMesh {
@@ -39,8 +39,6 @@ impl ChunkMesh {
                         continue;
                     };
 
-                    let texture_index = block.kind.texture_index(block.data, registry);
-
                     let left = data.get_block(world_pos - IVec3::X).is_none();
                     let right = data.get_block(world_pos + IVec3::X).is_none();
                     let front = data.get_block(world_pos + IVec3::Z).is_none();
@@ -54,6 +52,11 @@ impl ChunkMesh {
 
                     // Front face (+Z)
                     if front {
+                        let texture_index =
+                            block
+                                .kind
+                                .texture_index(block.data, registry, BlockFace::Front);
+
                         let index = mesh.index();
 
                         // Calculate AO for each vertex
@@ -123,6 +126,11 @@ impl ChunkMesh {
 
                     // Back face (-Z)
                     if back {
+                        let texture_index =
+                            block
+                                .kind
+                                .texture_index(block.data, registry, BlockFace::Back);
+
                         let index = mesh.index();
 
                         // Calculate AO for each vertex
@@ -192,6 +200,11 @@ impl ChunkMesh {
 
                     // Left face (-X)
                     if left {
+                        let texture_index =
+                            block
+                                .kind
+                                .texture_index(block.data, registry, BlockFace::Left);
+
                         let index = mesh.index();
 
                         // Calculate AO for each vertex
@@ -261,6 +274,11 @@ impl ChunkMesh {
 
                     // Right face (+X)
                     if right {
+                        let texture_index =
+                            block
+                                .kind
+                                .texture_index(block.data, registry, BlockFace::Right);
+
                         let index = mesh.index();
 
                         // Calculate AO for each vertex
@@ -330,6 +348,11 @@ impl ChunkMesh {
 
                     // Top face (+Y)
                     if top {
+                        let texture_index =
+                            block
+                                .kind
+                                .texture_index(block.data, registry, BlockFace::Top);
+
                         let index = mesh.index();
 
                         // Calculate AO for each vertex
@@ -399,6 +422,11 @@ impl ChunkMesh {
 
                     // Bottom face (-Y)
                     if bottom {
+                        let texture_index =
+                            block
+                                .kind
+                                .texture_index(block.data, registry, BlockFace::Bottom);
+
                         let index = mesh.index();
 
                         // Calculate AO for each vertex

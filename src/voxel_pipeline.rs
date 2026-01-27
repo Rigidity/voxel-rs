@@ -30,8 +30,10 @@ impl VoxelPipeline {
         let mut builder = TextureArrayBuilder::new(16, 16);
         let mut registry = Registry::new();
 
+        let atlas = image::load_from_memory(include_bytes!("../textures/textures.png")).unwrap();
+
         for block_kind in BlockKind::iter() {
-            block_kind.register_textures(&mut builder, &mut registry);
+            block_kind.register_textures(&mut builder, &mut registry, &atlas);
         }
 
         let textures = builder.into_textures();

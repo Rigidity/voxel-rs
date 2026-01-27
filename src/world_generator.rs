@@ -60,7 +60,7 @@ impl WorldGenerator {
                             Some(Block::new(
                                 BlockKind::Rock,
                                 RockData {
-                                    rock_type: RockType::Rock,
+                                    rock_type: RockType::Stone,
                                     material: Material::Shale,
                                 }
                                 .encode(),

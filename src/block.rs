@@ -1,9 +1,20 @@
 use glam::Vec3;
+use image::{ColorType, DynamicImage, GenericImageView, Rgba};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::{Aabb, Material, MaterialKind, Registry, TextureArrayBuilder};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BlockFace {
+    Top,
+    Bottom,
+    Left,
+    Right,
+    Front,
+    Back,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Block {
@@ -20,6 +31,9 @@ impl Block {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, Display)]
 #[repr(u16)]
 pub enum BlockKind {
+    #[strum(to_string = "Test")]
+    Test,
+
     #[strum(to_string = "Soil")]
     Soil,
 
@@ -32,14 +46,42 @@ impl BlockKind {
         Some(Aabb::new(Vec3::ZERO, Vec3::splat(1.0)))
     }
 
-    pub fn register_textures(&self, builder: &mut TextureArrayBuilder, registry: &mut Registry) {
+    pub fn register_textures(
+        &self,
+        builder: &mut TextureArrayBuilder,
+        registry: &mut Registry,
+        atlas: &DynamicImage,
+    ) {
         match self {
+            Self::Test => {
+                let mut image = DynamicImage::new(16, 16, ColorType::Rgba8);
+
+                for pixel in image.as_mut_rgba8().unwrap().pixels_mut() {
+                    *pixel = Rgba([0xFF, 0x00, 0xFF, 0xFF]);
+                }
+
+                let texture_index = builder.add_image(image);
+
+                registry.register_texture(*self, 0, texture_index);
+            }
             Self::Soil => {
-                let base_image =
-                    image::load_from_memory(include_bytes!("../textures/Soil.png")).unwrap();
-                let overlay_image =
-                    image::load_from_memory(include_bytes!("../textures/GrassOverlay.png"))
-                        .unwrap();
+                let base_image: DynamicImage = atlas.view(0, 0, 16, 16).to_image().into();
+                let overlay_image: DynamicImage = atlas.view(16, 0, 16, 16).to_image().into();
+
+                for grass_material in Material::iter() {
+                    if grass_material.kind() == MaterialKind::Grass {
+                        let mut image = base_image.clone().into_rgba8();
+                        grass_material.color_image(&mut image);
+
+                        let texture_index = builder.add_image(image.into());
+
+                        registry.register_texture(
+                            *self,
+                            SoilTextureData::Grass { grass_material }.encode(),
+                            texture_index,
+                        );
+                    }
+                }
 
                 for material in Material::iter() {
                     if material.kind() == MaterialKind::Soil {
@@ -51,7 +93,7 @@ impl BlockKind {
 
                         registry.register_texture(
                             *self,
-                            SoilData {
+                            SoilTextureData::Soil {
                                 material,
                                 grass_material: None,
                             }
@@ -79,7 +121,7 @@ impl BlockKind {
 
                                 registry.register_texture(
                                     *self,
-                                    SoilData {
+                                    SoilTextureData::Soil {
                                         material,
                                         grass_material: Some(grass_material),
                                     }
@@ -93,14 +135,9 @@ impl BlockKind {
             }
             Self::Rock => {
                 for rock_type in RockType::iter() {
-                    let image = match rock_type {
-                        RockType::Rock => {
-                            image::load_from_memory(include_bytes!("../textures/Rock.png")).unwrap()
-                        }
-                        RockType::Stone => {
-                            image::load_from_memory(include_bytes!("../textures/Stone.png"))
-                                .unwrap()
-                        }
+                    let image: DynamicImage = match rock_type {
+                        RockType::Rock => atlas.view(48, 0, 16, 16).to_image().into(),
+                        RockType::Stone => atlas.view(32, 0, 16, 16).to_image().into(),
                     };
 
                     for material in Material::iter() {
@@ -127,9 +164,44 @@ impl BlockKind {
         }
     }
 
-    pub fn texture_index(&self, data: u64, registry: &Registry) -> u32 {
+    pub fn texture_index(&self, data: u64, registry: &Registry, face: BlockFace) -> u32 {
         match self {
-            Self::Soil => registry.texture_index(*self, data),
+            Self::Test => registry.texture_index(*self, 0),
+            Self::Soil => {
+                let soil_data = SoilData::decode(data);
+
+                let Some(grass_material) = soil_data.grass_material else {
+                    return registry.texture_index(
+                        *self,
+                        SoilTextureData::Soil {
+                            material: soil_data.material,
+                            grass_material: None,
+                        }
+                        .encode(),
+                    );
+                };
+
+                match face {
+                    BlockFace::Top => registry
+                        .texture_index(*self, SoilTextureData::Grass { grass_material }.encode()),
+                    BlockFace::Bottom => registry.texture_index(
+                        *self,
+                        SoilTextureData::Soil {
+                            material: soil_data.material,
+                            grass_material: None,
+                        }
+                        .encode(),
+                    ),
+                    _ => registry.texture_index(
+                        *self,
+                        SoilTextureData::Soil {
+                            material: soil_data.material,
+                            grass_material: Some(grass_material),
+                        }
+                        .encode(),
+                    ),
+                }
+            }
             Self::Rock => registry.texture_index(*self, data),
         }
     }
@@ -203,6 +275,56 @@ impl BlockData for SoilData {
         Self {
             material,
             grass_material,
+        }
+    }
+}
+
+enum SoilTextureData {
+    Soil {
+        material: Material,
+        grass_material: Option<Material>,
+    },
+    Grass {
+        grass_material: Material,
+    },
+}
+
+impl BlockData for SoilTextureData {
+    fn encode(&self) -> u64 {
+        match self {
+            Self::Soil {
+                material,
+                grass_material,
+            } => {
+                let discriminant: u64 = 0;
+                let material = material.to_u16().unwrap() as u64;
+                let grass_material = grass_material
+                    .map(|m| m.to_u16().unwrap())
+                    .unwrap_or(u16::MAX) as u64;
+
+                discriminant | (material << 1) | (grass_material << 17)
+            }
+            Self::Grass { grass_material } => {
+                let discriminant: u64 = 1;
+                let grass_material = grass_material.to_u16().unwrap() as u64;
+
+                discriminant | (grass_material << 1)
+            }
+        }
+    }
+
+    fn decode(data: u64) -> Self {
+        let discriminant = data & 0x01;
+
+        match discriminant {
+            0 => Self::Soil {
+                material: Material::from_u16((data >> 1) as u16).unwrap(),
+                grass_material: Some(Material::from_u16((data >> 17) as u16).unwrap()),
+            },
+            1 => Self::Grass {
+                grass_material: Material::from_u16((data >> 1) as u16).unwrap(),
+            },
+            _ => unreachable!(),
         }
     }
 }

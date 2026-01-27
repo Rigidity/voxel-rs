@@ -161,7 +161,7 @@ impl Player {
             {
                 world.set_block(
                     result.previous_position,
-                    Some(Block::new(BlockKind::Rock, 0)),
+                    Some(Block::new(BlockKind::Test, 0)),
                 );
             }
         }
