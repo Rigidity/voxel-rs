@@ -20,7 +20,7 @@ impl World {
             generator,
             center_pos: IVec3::ZERO,
             generation_tasks: IndexMap::new(),
-            generation_radius: 8,
+            generation_radius: 6,
         }
     }
 

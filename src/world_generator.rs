@@ -41,7 +41,7 @@ impl WorldGenerator {
                         1.0,
                     );
 
-                    if value > 0.2 {
+                    if value > -0.1 {
                         let block_id = if global_pos.y < 0.0 {
                             REGISTRY.block_id("rock")
                         } else {

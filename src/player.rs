@@ -40,9 +40,9 @@ impl Player {
     pub fn update(&mut self, input: &mut Input, delta: f32, world: &mut World) {
         self.grounded_timer = (self.grounded_timer - delta).max(0.0);
 
-        let walk_speed = 6.0;
-        let gravity = -32.0;
-        let jump_velocity = 10.0;
+        let walk_speed = 7.0;
+        let gravity = -36.0;
+        let jump_velocity = 13.0;
         let rotation_speed = 2.0 * delta;
 
         let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
