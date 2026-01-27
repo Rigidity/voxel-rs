@@ -139,10 +139,10 @@ impl World {
         let chunk_pos = Self::chunk_pos(world_pos);
         let local_pos = Self::local_pos(world_pos);
         let chunk = self.chunks.get(&chunk_pos)?;
-        Some(chunk.get_block(local_pos))
+        chunk.get_block(local_pos)
     }
 
-    pub fn set_block(&mut self, world_pos: IVec3, block: Block) {
+    pub fn set_block(&mut self, world_pos: IVec3, block: Option<Block>) {
         let chunk_pos = Self::chunk_pos(world_pos);
         let local_pos = Self::local_pos(world_pos);
         let Some(chunk) = self.chunks.get_mut(&chunk_pos) else {

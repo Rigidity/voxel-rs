@@ -1,7 +1,7 @@
 use glam::{DVec3, IVec3, USizeVec3};
 use noise::{NoiseFn, Perlin};
 
-use crate::{Block, CHUNK_SIZE, ChunkData};
+use crate::{Block, CHUNK_SIZE, ChunkData, REGISTRY};
 
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
@@ -42,7 +42,7 @@ impl WorldGenerator {
                     );
 
                     if value > 0.2 {
-                        data.set_block(local_pos, Block::Rock);
+                        data.set_block(local_pos, Some(Block::new(REGISTRY.block_id("dirt"), 0)));
                     }
                 }
             }

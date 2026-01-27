@@ -18,11 +18,11 @@ impl Chunk {
         }
     }
 
-    pub fn get_block(&self, local_pos: USizeVec3) -> Block {
+    pub fn get_block(&self, local_pos: USizeVec3) -> Option<Block> {
         self.data.get_block(local_pos)
     }
 
-    pub fn set_block(&mut self, local_pos: USizeVec3, block: Block) {
+    pub fn set_block(&mut self, local_pos: USizeVec3, block: Option<Block>) {
         self.data.set_block(local_pos, block);
         self.is_dirty = true;
     }

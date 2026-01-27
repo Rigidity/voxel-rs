@@ -31,6 +31,6 @@ impl RelevantChunks {
         let chunk_pos = World::chunk_pos(world_pos);
         let local_pos = World::local_pos(world_pos);
         let chunk = self.chunks.get(&chunk_pos)?;
-        Some(chunk.get_block(local_pos))
+        chunk.get_block(local_pos)
     }
 }

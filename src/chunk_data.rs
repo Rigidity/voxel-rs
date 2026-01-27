@@ -2,15 +2,15 @@ use glam::USizeVec3;
 
 use crate::{Block, CHUNK_SIZE};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct ChunkData {
-    blocks: Vec<Block>,
+    blocks: Vec<Option<Block>>,
 }
 
 impl Default for ChunkData {
     fn default() -> Self {
         Self {
-            blocks: vec![Block::Air; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE],
+            blocks: vec![None; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE],
         }
     }
 }
@@ -20,11 +20,11 @@ impl ChunkData {
         Self::default()
     }
 
-    pub fn get_block(&self, local_pos: USizeVec3) -> Block {
+    pub fn get_block(&self, local_pos: USizeVec3) -> Option<Block> {
         self.blocks[self.index(local_pos)]
     }
 
-    pub fn set_block(&mut self, local_pos: USizeVec3, block: Block) {
+    pub fn set_block(&mut self, local_pos: USizeVec3, block: Option<Block>) {
         let index = self.index(local_pos);
         self.blocks[index] = block;
     }

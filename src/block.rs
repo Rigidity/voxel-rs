@@ -1,26 +1,31 @@
-use glam::{IVec3, Vec3};
+use glam::Vec3;
 
 use crate::Aabb;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Block {
-    #[default]
-    Air,
-    Rock,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Block {
+    pub id: u16,
+    pub data: u64,
 }
 
 impl Block {
-    pub fn is_solid(&self) -> bool {
-        !matches!(self, Block::Air)
+    pub fn new(id: u16, data: u64) -> Self {
+        Self { id, data }
     }
+}
 
-    pub fn aabb(&self, position: IVec3) -> Option<Aabb> {
-        match self {
-            Block::Air => None,
-            Block::Rock => Some(Aabb::new(
-                Vec3::new(position.x as f32, position.y as f32, position.z as f32),
-                Vec3::splat(1.0),
-            )),
-        }
+pub trait BlockType: Send + Sync + 'static {
+    fn base_name(&self) -> &'static str;
+
+    fn get_aabb(&self, _data: u64) -> Option<Aabb> {
+        Some(Aabb::new(Vec3::ZERO, Vec3::splat(1.0)))
+    }
+}
+
+pub struct Dirt;
+
+impl BlockType for Dirt {
+    fn base_name(&self) -> &'static str {
+        "dirt"
     }
 }

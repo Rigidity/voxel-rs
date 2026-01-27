@@ -1,7 +1,7 @@
 use glam::{IVec3, Vec3};
 use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{Aabb, Block, Input, World};
+use crate::{Aabb, Block, Input, REGISTRY, World};
 
 const COYOTE_TIME: f32 = 0.075;
 
@@ -129,12 +129,12 @@ impl Player {
                 && let Some(result) =
                     voxel_raycast(self.camera_position(), forward_with_pitch, 5.0, world)
             {
-                world.set_block(result.hit_position, Block::Air);
+                world.set_block(result.hit_position, None);
             } else if input.is_mouse_button_just_pressed(MouseButton::Right)
                 && let Some(result) =
                     voxel_raycast(self.camera_position(), forward_with_pitch, 5.0, world)
             {
-                world.set_block(result.previous_position, Block::Rock);
+                world.set_block(result.previous_position, Some(Block::new(0, 0)));
             }
         }
     }
@@ -177,7 +177,16 @@ impl Player {
                 for z in min.z as i32..max.z as i32 {
                     let block_pos = IVec3::new(x, y, z);
                     if let Some(block) = world.get_block(block_pos)
-                        && let Some(block_aabb) = block.aabb(block_pos)
+                        && let Some(block_aabb) = REGISTRY
+                            .block_type(block.id)
+                            .get_aabb(block.data)
+                            .map(|aabb| {
+                                aabb.translate(Vec3::new(
+                                    block_pos.x as f32,
+                                    block_pos.y as f32,
+                                    block_pos.z as f32,
+                                ))
+                            })
                     {
                         collisions.extend(swept_aabb(delta, source, block_aabb))
                     }
@@ -288,10 +297,7 @@ fn voxel_raycast(
     let mut previous_voxel = current_voxel;
 
     while distance < max_distance {
-        if world
-            .get_block(current_voxel)
-            .is_some_and(|block| block.is_solid())
-        {
+        if world.get_block(current_voxel).is_some() {
             return Some(VoxelRaycastResult {
                 hit_position: current_voxel,
                 previous_position: previous_voxel,

@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::IVec3;
 use wgpu::util::DeviceExt;
 
-use crate::{Block, CHUNK_SIZE, RelevantChunks};
+use crate::{CHUNK_SIZE, RelevantChunks};
 
 #[derive(Debug)]
 pub struct ChunkMesh {
@@ -34,30 +34,16 @@ impl ChunkMesh {
                     let world_pos =
                         center_pos * CHUNK_SIZE as i32 + IVec3::new(x as i32, y as i32, z as i32);
 
-                    let block = data.get_block(world_pos);
-
-                    if block.is_none_or(|block| block == Block::Air) {
+                    let Some(_block) = data.get_block(world_pos) else {
                         continue;
-                    }
+                    };
 
-                    let left = data
-                        .get_block(world_pos - IVec3::X)
-                        .is_none_or(|block| !block.is_solid());
-                    let right = data
-                        .get_block(world_pos + IVec3::X)
-                        .is_none_or(|block| !block.is_solid());
-                    let front = data
-                        .get_block(world_pos + IVec3::Z)
-                        .is_none_or(|block| !block.is_solid());
-                    let back = data
-                        .get_block(world_pos - IVec3::Z)
-                        .is_none_or(|block| !block.is_solid());
-                    let top = data
-                        .get_block(world_pos + IVec3::Y)
-                        .is_none_or(|block| !block.is_solid());
-                    let bottom = data
-                        .get_block(world_pos - IVec3::Y)
-                        .is_none_or(|block| !block.is_solid());
+                    let left = data.get_block(world_pos - IVec3::X).is_none();
+                    let right = data.get_block(world_pos + IVec3::X).is_none();
+                    let front = data.get_block(world_pos + IVec3::Z).is_none();
+                    let back = data.get_block(world_pos - IVec3::Z).is_none();
+                    let top = data.get_block(world_pos + IVec3::Y).is_none();
+                    let bottom = data.get_block(world_pos - IVec3::Y).is_none();
 
                     let x = x as u32;
                     let y = y as u32;
@@ -70,39 +56,27 @@ impl ChunkMesh {
                         // Calculate AO for each vertex
                         // Top-right vertex
                         let tr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, 1)).is_some(),
                         );
                         // Top-left vertex
                         let tl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, 1)).is_some(),
                         );
                         // Bottom-left vertex
                         let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, 1)).is_some(),
                         );
                         // Bottom-right vertex
                         let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, 1)).is_some(),
                         );
 
                         mesh.vertices.push(ChunkVertex::new(
@@ -147,39 +121,27 @@ impl ChunkMesh {
                         // Calculate AO for each vertex
                         // Top-left vertex
                         let tl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, -1)).is_some(),
                         );
                         // Top-right vertex
                         let tr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, -1)).is_some(),
                         );
                         // Bottom-right vertex
                         let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, -1)).is_some(),
                         );
                         // Bottom-left vertex
                         let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, -1)).is_some(),
                         );
 
                         mesh.vertices.push(ChunkVertex::new(
@@ -220,39 +182,27 @@ impl ChunkMesh {
                         // Calculate AO for each vertex
                         // Top-front vertex
                         let tf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, 1)).is_some(),
                         );
                         // Top-back vertex
                         let tb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, -1)).is_some(),
                         );
                         // Bottom-back vertex
                         let bb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, -1)).is_some(),
                         );
                         // Bottom-front vertex
                         let bf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, 1)).is_some(),
                         );
 
                         mesh.vertices.push(ChunkVertex::new(
@@ -293,39 +243,27 @@ impl ChunkMesh {
                         // Calculate AO for each vertex
                         // Top-back vertex
                         let tb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, -1)).is_some(),
                         );
                         // Top-front vertex
                         let tf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, 1)).is_some(),
                         );
                         // Bottom-front vertex
                         let bf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, 1)).is_some(),
                         );
                         // Bottom-back vertex
                         let bb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, -1)).is_some(),
                         );
 
                         mesh.vertices.push(ChunkVertex::new(
@@ -370,39 +308,27 @@ impl ChunkMesh {
                         // Calculate AO for each vertex
                         // Front-right vertex
                         let fr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, 1)).is_some(),
                         );
                         // Back-right vertex
                         let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, 1, -1)).is_some(),
                         );
                         // Back-left vertex
                         let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, -1)).is_some(),
                         );
                         // Front-left vertex
                         let fl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, 1, 1)).is_some(),
                         );
 
                         mesh.vertices.push(ChunkVertex::new(
@@ -447,39 +373,27 @@ impl ChunkMesh {
                         // Calculate AO for each vertex
                         // Back-right vertex
                         let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, -1)).is_some(),
                         );
                         // Front-right vertex
                         let fr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(1, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(1, -1, 1)).is_some(),
                         );
                         // Front-left vertex
                         let fl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, 1)).is_some(),
                         );
                         // Back-left vertex
                         let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
-                            data.get_block(world_pos + IVec3::new(-1, -1, -1))
-                                .is_some_and(|block| block.is_solid()),
+                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
+                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
+                            data.get_block(world_pos + IVec3::new(-1, -1, -1)).is_some(),
                         );
 
                         mesh.vertices.push(ChunkVertex::new(
