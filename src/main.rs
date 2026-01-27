@@ -1,3 +1,5 @@
+#![allow(clippy::new_without_default)]
+
 use anyhow::Result;
 use winit::event_loop::{ControlFlow, EventLoop};
 
@@ -18,6 +20,7 @@ mod relevant_chunks;
 mod renderer;
 mod texture;
 mod texture_array;
+mod texture_array_builder;
 mod voxel_pipeline;
 mod world;
 mod world_generator;
@@ -39,6 +42,7 @@ pub use relevant_chunks::*;
 pub use renderer::*;
 pub use texture::*;
 pub use texture_array::*;
+pub use texture_array_builder::*;
 pub use voxel_pipeline::*;
 pub use world::*;
 pub use world_generator::*;

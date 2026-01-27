@@ -1,27 +1,44 @@
+use std::sync::Arc;
+
 use glam::{IVec3, Vec3};
 
-use crate::{Camera, Input, Player, Projection, World, WorldGenerator};
+use crate::{
+    Camera, DIRT, Input, Player, Projection, ROCK, Registry, TextureArrayBuilder, World,
+    WorldGenerator,
+};
 
 pub struct GameState {
     pub player: Player,
     pub camera: Camera,
     pub projection: Projection,
     pub world: World,
+    pub registry: Arc<Registry>,
 }
 
 impl GameState {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(texture_builder: Option<&mut TextureArrayBuilder>) -> Self {
         let player = Player::new(Vec3::new(8.0, 100.0, 8.0), Vec3::new(0.6, 1.8, 0.6), 1.4);
         let camera = Camera::new(player.camera_position(), player.yaw, player.pitch);
         let projection = Projection::new(0, 0, 75.0, 0.1, 1000.0);
         let world = World::new(WorldGenerator::new());
+
+        let mut registry = Registry::new();
+        registry.register_block_type(DIRT);
+        registry.register_block_type(ROCK);
+
+        if let Some(builder) = texture_builder {
+            for block_id in registry.block_ids().collect::<Vec<_>>() {
+                let block_type = registry.block_type(block_id);
+                block_type.register_textures(builder, &mut registry);
+            }
+        }
 
         Self {
             player,
             camera,
             projection,
             world,
+            registry: Arc::new(registry),
         }
     }
 
@@ -32,8 +49,9 @@ impl GameState {
             self.player.position.z as i32,
         );
         let player_chunk_pos = World::chunk_pos(player_pos);
-        self.world.tick(player_chunk_pos);
-        self.player.update(input, delta, &mut self.world);
+        self.world.tick(player_chunk_pos, &self.registry);
+        self.player
+            .update(input, delta, &mut self.world, &self.registry);
         self.camera.position = self.player.camera_position();
         self.camera.yaw = self.player.yaw;
         self.camera.pitch = self.player.pitch;

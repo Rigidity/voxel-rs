@@ -1,7 +1,7 @@
 use glam::{IVec3, Vec3};
 use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{Aabb, Block, Input, REGISTRY, World};
+use crate::{Aabb, Block, Input, Registry, World};
 
 const COYOTE_TIME: f32 = 0.075;
 
@@ -37,7 +37,13 @@ impl Player {
         self.position + Vec3::new(self.size.x / 2.0, self.eye_height, self.size.z / 2.0)
     }
 
-    pub fn update(&mut self, input: &mut Input, delta: f32, world: &mut World) {
+    pub fn update(
+        &mut self,
+        input: &mut Input,
+        delta: f32,
+        world: &mut World,
+        registry: &Registry,
+    ) {
         self.grounded_timer = (self.grounded_timer - delta).max(0.0);
 
         let walk_speed = 7.0;
@@ -110,7 +116,7 @@ impl Player {
             self.grounded_timer = 0.0;
         }
 
-        self.move_with_collision(self.velocity * delta, world);
+        self.move_with_collision(self.velocity * delta, world, registry);
 
         if input.is_key_pressed(KeyCode::ArrowLeft) {
             self.yaw -= rotation_speed;
@@ -164,10 +170,10 @@ impl Player {
         }
     }
 
-    fn move_with_collision(&mut self, mut delta: Vec3, world: &World) {
+    fn move_with_collision(&mut self, mut delta: Vec3, world: &World, registry: &Registry) {
         for _ in 0..3 {
             let collision = self
-                .check_collision(delta, world)
+                .check_collision(delta, world, registry)
                 .into_iter()
                 .min_by(|a, b| a.time.total_cmp(&b.time));
 
@@ -188,7 +194,7 @@ impl Player {
         }
     }
 
-    fn check_collision(&self, delta: Vec3, world: &World) -> Vec<Collision> {
+    fn check_collision(&self, delta: Vec3, world: &World, registry: &Registry) -> Vec<Collision> {
         let mut collisions = Vec::new();
 
         let source = self.aabb();
@@ -202,7 +208,7 @@ impl Player {
                 for z in min.z as i32..max.z as i32 {
                     let block_pos = IVec3::new(x, y, z);
                     if let Some(block) = world.get_block(block_pos)
-                        && let Some(block_aabb) = REGISTRY
+                        && let Some(block_aabb) = registry
                             .block_type(block.id)
                             .get_aabb(block.data)
                             .map(|aabb| {

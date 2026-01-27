@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use glam::IVec3;
 use wgpu::util::DeviceExt;
 
-use crate::{CHUNK_SIZE, REGISTRY, RelevantChunks};
+use crate::{CHUNK_SIZE, Registry, RelevantChunks};
 
 #[derive(Debug)]
 pub struct ChunkMesh {
@@ -25,6 +25,7 @@ impl ChunkMesh {
         center_pos: IVec3,
         data: &RelevantChunks,
         position_bind_group: wgpu::BindGroup,
+        registry: &Registry,
     ) -> Option<Self> {
         let mut mesh = ChunkMeshBuilder::new();
 
@@ -38,7 +39,9 @@ impl ChunkMesh {
                         continue;
                     };
 
-                    let texture_index = REGISTRY.block_type(block.id).texture_index(block.data);
+                    let texture_index = registry
+                        .block_type(block.id)
+                        .texture_index(block.data, registry);
 
                     let left = data.get_block(world_pos - IVec3::X).is_none();
                     let right = data.get_block(world_pos + IVec3::X).is_none();

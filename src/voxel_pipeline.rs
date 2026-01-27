@@ -1,9 +1,14 @@
+use std::sync::Arc;
+
 use glam::IVec3;
+use image::DynamicImage;
 use indexmap::IndexMap;
 use oneshot::TryRecvError;
 use wgpu::util::DeviceExt;
 
-use crate::{CHUNK_SIZE, ChunkMesh, ChunkVertex, RelevantChunks, Texture, TextureArray, World};
+use crate::{
+    CHUNK_SIZE, ChunkMesh, ChunkVertex, Registry, RelevantChunks, Texture, TextureArray, World,
+};
 
 pub struct VoxelPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -19,8 +24,9 @@ impl VoxelPipeline {
         queue: &wgpu::Queue,
         texture_format: wgpu::TextureFormat,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
+        textures: Vec<DynamicImage>,
     ) -> Self {
-        let texture_array = TextureArray::new(device, queue);
+        let texture_array = TextureArray::new(device, queue, textures);
 
         let chunk_position_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -102,7 +108,7 @@ impl VoxelPipeline {
         }
     }
 
-    pub fn tick(&mut self, device: &wgpu::Device, world: &mut World) {
+    pub fn tick(&mut self, device: &wgpu::Device, world: &mut World, registry: &Arc<Registry>) {
         self.chunk_meshes
             .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
 
@@ -165,10 +171,16 @@ impl VoxelPipeline {
             });
 
             let device = device.clone();
+            let registry = registry.clone();
 
             rayon::spawn(move || {
-                let mesh =
-                    ChunkMesh::from_chunk_data(&device, chunk_pos, &relevant_chunks, bind_group);
+                let mesh = ChunkMesh::from_chunk_data(
+                    &device,
+                    chunk_pos,
+                    &relevant_chunks,
+                    bind_group,
+                    &registry,
+                );
                 sender.send(mesh).ok();
             });
 
