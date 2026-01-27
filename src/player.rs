@@ -45,6 +45,11 @@ impl Player {
         let jump_velocity = 13.0;
         let rotation_speed = 2.0 * delta;
 
+        let ground_acceleration = 150.0;
+        let air_acceleration = 70.0;
+        let ground_friction = 0.91;
+        let air_friction = 0.98;
+
         let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
         let forward = Vec3::new(cos_yaw, 0.0, sin_yaw).normalize();
         let right = Vec3::new(-sin_yaw, 0.0, cos_yaw).normalize();
@@ -71,8 +76,28 @@ impl Player {
             movement_dir = movement_dir.normalize();
         }
 
-        self.velocity.x = movement_dir.x * walk_speed;
-        self.velocity.z = movement_dir.z * walk_speed;
+        let target_velocity = movement_dir * walk_speed;
+
+        let is_grounded = self.grounded_timer > 0.0;
+        let acceleration = if is_grounded {
+            ground_acceleration
+        } else {
+            air_acceleration
+        };
+        let friction = if is_grounded {
+            ground_friction
+        } else {
+            air_friction
+        };
+
+        let velocity_diff = target_velocity - Vec3::new(self.velocity.x, 0.0, self.velocity.z);
+        let acceleration_force = velocity_diff.clamp_length_max(acceleration * delta);
+
+        self.velocity.x += acceleration_force.x;
+        self.velocity.z += acceleration_force.z;
+
+        self.velocity.x *= friction;
+        self.velocity.z *= friction;
 
         if self.grounded_timer == 0.0 {
             self.velocity.y += gravity * delta;
