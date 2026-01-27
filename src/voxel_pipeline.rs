@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use glam::IVec3;
-use image::DynamicImage;
 use indexmap::IndexMap;
 use oneshot::TryRecvError;
+use strum::IntoEnumIterator;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    CHUNK_SIZE, ChunkMesh, ChunkVertex, Registry, RelevantChunks, Texture, TextureArray, World,
+    BlockKind, CHUNK_SIZE, ChunkMesh, ChunkVertex, Registry, RelevantChunks, Texture, TextureArray,
+    TextureArrayBuilder, World,
 };
 
 pub struct VoxelPipeline {
@@ -16,6 +17,7 @@ pub struct VoxelPipeline {
     chunk_position_bind_group_layout: wgpu::BindGroupLayout,
     chunk_meshes: IndexMap<IVec3, ChunkMesh>,
     mesh_tasks: IndexMap<IVec3, oneshot::Receiver<Option<ChunkMesh>>>,
+    registry: Arc<Registry>,
 }
 
 impl VoxelPipeline {
@@ -24,8 +26,16 @@ impl VoxelPipeline {
         queue: &wgpu::Queue,
         texture_format: wgpu::TextureFormat,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
-        textures: Vec<DynamicImage>,
     ) -> Self {
+        let mut builder = TextureArrayBuilder::new(16, 16);
+        let mut registry = Registry::new();
+
+        for block_kind in BlockKind::iter() {
+            block_kind.register_textures(&mut builder, &mut registry);
+        }
+
+        let textures = builder.into_textures();
+
         let texture_array = TextureArray::new(device, queue, textures);
 
         let chunk_position_bind_group_layout =
@@ -105,10 +115,11 @@ impl VoxelPipeline {
             chunk_position_bind_group_layout,
             chunk_meshes: IndexMap::new(),
             mesh_tasks: IndexMap::new(),
+            registry: Arc::new(registry),
         }
     }
 
-    pub fn tick(&mut self, device: &wgpu::Device, world: &mut World, registry: &Arc<Registry>) {
+    pub fn tick(&mut self, device: &wgpu::Device, world: &mut World) {
         self.chunk_meshes
             .retain(|chunk_pos, _| world.chunks.contains_key(chunk_pos));
 
@@ -171,7 +182,7 @@ impl VoxelPipeline {
             });
 
             let device = device.clone();
-            let registry = registry.clone();
+            let registry = self.registry.clone();
 
             rayon::spawn(move || {
                 let mesh = ChunkMesh::from_chunk_data(

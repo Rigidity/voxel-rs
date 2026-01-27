@@ -39,9 +39,7 @@ impl ChunkMesh {
                         continue;
                     };
 
-                    let texture_index = registry
-                        .block_type(block.id)
-                        .texture_index(block.data, registry);
+                    let texture_index = block.kind.texture_index(block.data, registry);
 
                     let left = data.get_block(world_pos - IVec3::X).is_none();
                     let right = data.get_block(world_pos + IVec3::X).is_none();

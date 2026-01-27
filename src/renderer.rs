@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use image::DynamicImage;
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use crate::{Camera, Projection, Registry, Texture, VoxelPipeline, World};
+use crate::{Camera, Projection, Texture, VoxelPipeline, World};
 
 pub struct Renderer {
     surface: wgpu::Surface<'static>,
@@ -19,7 +18,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub async fn new(window: Arc<Window>, textures: Vec<DynamicImage>) -> anyhow::Result<Self> {
+    pub async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
@@ -105,13 +104,8 @@ impl Renderer {
 
         let depth_texture = Texture::create_depth_texture(&device, &config, "depth_texture");
 
-        let voxel_pipeline = VoxelPipeline::new(
-            &device,
-            &queue,
-            config.format,
-            &camera_bind_group_layout,
-            textures,
-        );
+        let voxel_pipeline =
+            VoxelPipeline::new(&device, &queue, config.format, &camera_bind_group_layout);
 
         Ok(Self {
             surface,
@@ -147,8 +141,8 @@ impl Renderer {
         );
     }
 
-    pub fn tick(&mut self, world: &mut World, registry: &Arc<Registry>) {
-        self.voxel_pipeline.tick(&self.device, world, registry);
+    pub fn tick(&mut self, world: &mut World) {
+        self.voxel_pipeline.tick(&self.device, world);
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

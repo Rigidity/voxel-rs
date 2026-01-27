@@ -5,7 +5,7 @@ use winit::{
     window::{CursorGrabMode, Window},
 };
 
-use crate::{GameState, Input, Renderer, TextureArrayBuilder};
+use crate::{GameState, Input, Renderer};
 
 pub struct AppState {
     pub renderer: Renderer,
@@ -20,13 +20,8 @@ pub struct AppState {
 impl AppState {
     pub async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let input = Input::new();
-
-        let mut builder = TextureArrayBuilder::new(16, 16);
-
-        let game_state = GameState::new(Some(&mut builder));
-        let textures = builder.into_textures();
-        let renderer = Renderer::new(window.clone(), textures).await?;
-
+        let game_state = GameState::new();
+        let renderer = Renderer::new(window.clone()).await?;
         let now = Instant::now();
 
         Ok(Self {
@@ -86,8 +81,7 @@ impl AppState {
 
         self.input.finish_tick();
 
-        self.renderer
-            .tick(&mut self.game_state.world, &self.game_state.registry);
+        self.renderer.tick(&mut self.game_state.world);
 
         // FPS calculation
         self.frame_count += 1;

@@ -1,7 +1,7 @@
 use glam::{DVec3, IVec3, USizeVec3};
 use noise::{NoiseFn, Perlin};
 
-use crate::{Block, CHUNK_SIZE, ChunkData, Registry};
+use crate::{Block, BlockKind, CHUNK_SIZE, ChunkData};
 
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
@@ -21,7 +21,7 @@ impl WorldGenerator {
         Self::default()
     }
 
-    pub fn generate_chunk(&self, chunk_pos: IVec3, registry: &Registry) -> ChunkData {
+    pub fn generate_chunk(&self, chunk_pos: IVec3) -> ChunkData {
         let mut data = ChunkData::new();
 
         for x in 0..CHUNK_SIZE {
@@ -43,9 +43,9 @@ impl WorldGenerator {
 
                     if value > -0.1 {
                         let block_id = if global_pos.y < 0.0 {
-                            registry.block_id("rock")
+                            BlockKind::Rock
                         } else {
-                            registry.block_id("dirt")
+                            BlockKind::Dirt
                         };
 
                         data.set_block(local_pos, Some(Block::new(block_id, 0)));

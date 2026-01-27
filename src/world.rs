@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use glam::{IVec3, USizeVec3, Vec3};
 use indexmap::IndexMap;
 use oneshot::TryRecvError;
 
-use crate::{Block, CHUNK_SIZE, Chunk, ChunkData, Registry, WorldGenerator};
+use crate::{Block, CHUNK_SIZE, Chunk, ChunkData, WorldGenerator};
 
 #[derive(Debug)]
 pub struct World {
@@ -26,7 +24,7 @@ impl World {
         }
     }
 
-    pub fn tick(&mut self, center_pos: IVec3, registry: &Arc<Registry>) {
+    pub fn tick(&mut self, center_pos: IVec3) {
         self.center_pos = center_pos;
 
         let chunks_to_remove = self
@@ -70,10 +68,9 @@ impl World {
             let (sender, receiver) = oneshot::channel();
 
             let generator = self.generator.clone();
-            let registry = registry.clone();
 
             rayon::spawn(move || {
-                let data = generator.generate_chunk(chunk_pos, &registry);
+                let data = generator.generate_chunk(chunk_pos);
                 sender.send(data).ok();
             });
 
