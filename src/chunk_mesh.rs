@@ -59,58 +59,32 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
-                        // Calculate AO for each vertex
-                        // Top-right vertex
-                        let tr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, 1)).is_some(),
-                        );
-                        // Top-left vertex
-                        let tl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 1)).is_some(),
-                        );
-                        // Bottom-left vertex
-                        let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 1)).is_some(),
-                        );
-                        // Bottom-right vertex
-                        let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, 1)).is_some(),
-                        );
-
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z + 1],
                             [1, 0],
                             [0, 0, 1],
-                            tr_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [0, 0],
                             [0, 0, 1],
-                            tl_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [0, 1],
                             [0, 0, 1],
-                            bl_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [1, 1],
                             [0, 0, 1],
-                            br_ao,
+                            3,
                             texture_index,
                         ));
 
@@ -133,58 +107,32 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
-                        // Calculate AO for each vertex
-                        // Top-left vertex
-                        let tl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, -1)).is_some(),
-                        );
-                        // Top-right vertex
-                        let tr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, -1)).is_some(),
-                        );
-                        // Bottom-right vertex
-                        let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, -1)).is_some(),
-                        );
-                        // Bottom-left vertex
-                        let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, -1)).is_some(),
-                        );
-
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [1, 0],
                             [0, 0, -1],
-                            tl_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [0, 0],
                             [0, 0, -1],
-                            tr_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [0, 1],
                             [0, 0, -1],
-                            br_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z],
                             [1, 1],
                             [0, 0, -1],
-                            bl_ao,
+                            3,
                             texture_index,
                         ));
 
@@ -207,58 +155,32 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
-                        // Calculate AO for each vertex
-                        // Top-front vertex
-                        let tf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 1)).is_some(),
-                        );
-                        // Top-back vertex
-                        let tb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, -1)).is_some(),
-                        );
-                        // Bottom-back vertex
-                        let bb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, -1)).is_some(),
-                        );
-                        // Bottom-front vertex
-                        let bf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 1)).is_some(),
-                        );
-
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [1, 0],
                             [-1, 0, 0],
-                            tf_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [0, 0],
                             [-1, 0, 0],
-                            tb_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z],
                             [0, 1],
                             [-1, 0, 0],
-                            bb_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [1, 1],
                             [-1, 0, 0],
-                            bf_ao,
+                            3,
                             texture_index,
                         ));
 
@@ -281,58 +203,32 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
-                        // Calculate AO for each vertex
-                        // Top-back vertex
-                        let tb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, -1)).is_some(),
-                        );
-                        // Top-front vertex
-                        let tf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, 1)).is_some(),
-                        );
-                        // Bottom-front vertex
-                        let bf_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, 1)).is_some(),
-                        );
-                        // Bottom-back vertex
-                        let bb_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 0, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, -1)).is_some(),
-                        );
-
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [1, 0],
                             [1, 0, 0],
-                            tb_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z + 1],
                             [0, 0],
                             [1, 0, 0],
-                            tf_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [0, 1],
                             [1, 0, 0],
-                            bf_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [1, 1],
                             [1, 0, 0],
-                            bb_ao,
+                            3,
                             texture_index,
                         ));
 
@@ -355,58 +251,32 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
-                        // Calculate AO for each vertex
-                        // Front-right vertex
-                        let fr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, 1)).is_some(),
-                        );
-                        // Back-right vertex
-                        let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, 1, -1)).is_some(),
-                        );
-                        // Back-left vertex
-                        let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, -1)).is_some(),
-                        );
-                        // Front-left vertex
-                        let fl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, 1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, 1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, 1, 1)).is_some(),
-                        );
-
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z + 1],
                             [1, 1],
                             [0, 1, 0],
-                            fr_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y + 1, z],
                             [1, 0],
                             [0, 1, 0],
-                            br_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z],
                             [0, 0],
                             [0, 1, 0],
-                            bl_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y + 1, z + 1],
                             [0, 1],
                             [0, 1, 0],
-                            fl_ao,
+                            3,
                             texture_index,
                         ));
 
@@ -429,58 +299,32 @@ impl ChunkMesh {
 
                         let index = mesh.index();
 
-                        // Calculate AO for each vertex
-                        // Back-right vertex
-                        let br_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, -1)).is_some(),
-                        );
-                        // Front-right vertex
-                        let fr_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(1, -1, 1)).is_some(),
-                        );
-                        // Front-left vertex
-                        let fl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, 1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, 1)).is_some(),
-                        );
-                        // Back-left vertex
-                        let bl_ao = calculate_ao(
-                            data.get_block(world_pos + IVec3::new(-1, -1, 0)).is_some(),
-                            data.get_block(world_pos + IVec3::new(0, -1, -1)).is_some(),
-                            data.get_block(world_pos + IVec3::new(-1, -1, -1)).is_some(),
-                        );
-
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z],
                             [1, 1],
                             [0, -1, 0],
-                            br_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x + 1, y, z + 1],
                             [1, 0],
                             [0, -1, 0],
-                            fr_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z + 1],
                             [0, 0],
                             [0, -1, 0],
-                            fl_ao,
+                            3,
                             texture_index,
                         ));
                         mesh.vertices.push(ChunkVertex::new(
                             [x, y, z],
                             [0, 1],
                             [0, -1, 0],
-                            bl_ao,
+                            3,
                             texture_index,
                         ));
 
@@ -584,12 +428,4 @@ impl ChunkVertex {
             attributes: &Self::ATTRIBS,
         }
     }
-}
-
-fn calculate_ao(side1: bool, side2: bool, corner: bool) -> u32 {
-    if side1 && side2 {
-        return 1;
-    }
-    let count = (side1 as u32) + (side2 as u32) + (corner as u32);
-    3 - count
 }
