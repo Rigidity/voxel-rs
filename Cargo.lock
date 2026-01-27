@@ -2562,6 +2562,8 @@ dependencies = [
  "indexmap",
  "log",
  "noise",
+ "num-derive",
+ "num-traits",
  "oneshot",
  "pollster",
  "rayon",

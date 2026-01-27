@@ -1,7 +1,8 @@
 use glam::Vec3;
-use strum::{Display, EnumIter};
+use num_traits::{FromPrimitive, ToPrimitive};
+use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::{Aabb, Registry, TextureArrayBuilder};
+use crate::{Aabb, Material, MaterialKind, Registry, TextureArrayBuilder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Block {
@@ -18,8 +19,8 @@ impl Block {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, Display)]
 #[repr(u16)]
 pub enum BlockKind {
-    #[strum(to_string = "Dirt")]
-    Dirt,
+    #[strum(to_string = "Soil")]
+    Soil,
 
     #[strum(to_string = "Rock")]
     Rock,
@@ -32,21 +33,90 @@ impl BlockKind {
 
     pub fn register_textures(&self, builder: &mut TextureArrayBuilder, registry: &mut Registry) {
         match self {
-            Self::Dirt => {
-                let texture_index = builder.add_bytes(include_bytes!("../textures/Dirt.png"));
-                registry.register_texture(*self, 0, texture_index);
+            Self::Soil => {
+                let image =
+                    image::load_from_memory(include_bytes!("../textures/Soil.png")).unwrap();
+
+                for material in Material::iter() {
+                    if material.kind() == MaterialKind::Soil {
+                        let mut image = image.clone().into_rgba8();
+
+                        material.color_image(&mut image);
+
+                        let texture_index = builder.add_image(image.into());
+
+                        registry.register_texture(
+                            *self,
+                            SoilData { material }.encode(),
+                            texture_index,
+                        );
+                    }
+                }
             }
             Self::Rock => {
-                let texture_index = builder.add_bytes(include_bytes!("../textures/Rock.png"));
-                registry.register_texture(*self, 0, texture_index);
+                let image =
+                    image::load_from_memory(include_bytes!("../textures/Rock.png")).unwrap();
+
+                for material in Material::iter() {
+                    if material.kind() == MaterialKind::Rock {
+                        let mut image = image.clone().into_rgba8();
+
+                        material.color_image(&mut image);
+
+                        let texture_index = builder.add_image(image.into());
+
+                        registry.register_texture(
+                            *self,
+                            RockData { material }.encode(),
+                            texture_index,
+                        );
+                    }
+                }
             }
         }
     }
 
-    pub fn texture_index(&self, _data: u64, registry: &Registry) -> u32 {
+    pub fn texture_index(&self, data: u64, registry: &Registry) -> u32 {
         match self {
-            Self::Dirt => registry.texture_index(*self, 0),
-            Self::Rock => registry.texture_index(*self, 0),
+            Self::Soil => registry.texture_index(*self, data),
+            Self::Rock => registry.texture_index(*self, data),
         }
+    }
+}
+
+pub trait BlockData {
+    fn encode(&self) -> u64;
+    fn decode(data: u64) -> Self;
+}
+
+pub struct RockData {
+    pub material: Material,
+}
+
+impl BlockData for RockData {
+    fn encode(&self) -> u64 {
+        let material = self.material.to_u16().unwrap();
+        material as u64
+    }
+
+    fn decode(data: u64) -> Self {
+        let material = Material::from_u16(data as u16).unwrap();
+        Self { material }
+    }
+}
+
+pub struct SoilData {
+    pub material: Material,
+}
+
+impl BlockData for SoilData {
+    fn encode(&self) -> u64 {
+        let material = self.material.to_u16().unwrap();
+        material as u64
+    }
+
+    fn decode(data: u64) -> Self {
+        let material = Material::from_u16(data as u16).unwrap();
+        Self { material }
     }
 }

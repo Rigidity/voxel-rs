@@ -1,7 +1,7 @@
 use glam::{DVec3, IVec3, USizeVec3};
 use noise::{NoiseFn, Perlin};
 
-use crate::{Block, BlockKind, CHUNK_SIZE, ChunkData};
+use crate::{Block, BlockData, BlockKind, CHUNK_SIZE, ChunkData, Material, RockData, SoilData};
 
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
@@ -42,13 +42,29 @@ impl WorldGenerator {
                     );
 
                     if value > -0.1 {
-                        let block_id = if global_pos.y < 0.0 {
-                            BlockKind::Rock
+                        let block = if global_pos.x < 0.0 {
+                            let rock_data = RockData {
+                                material: if global_pos.y < 0.0 {
+                                    Material::Shale
+                                } else {
+                                    Material::Chalk
+                                },
+                            };
+                            Block::new(BlockKind::Rock, rock_data.encode())
                         } else {
-                            BlockKind::Dirt
+                            let soil_data = SoilData {
+                                material: if global_pos.y < -200.0 {
+                                    Material::Loam
+                                } else if global_pos.y < -100.0 {
+                                    Material::Silt
+                                } else {
+                                    Material::Clay
+                                },
+                            };
+                            Block::new(BlockKind::Soil, soil_data.encode())
                         };
 
-                        data.set_block(local_pos, Some(Block::new(block_id, 0)));
+                        data.set_block(local_pos, Some(block));
                     }
                 }
             }
