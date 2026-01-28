@@ -79,10 +79,10 @@ impl Material {
                 Rgba(color!( #7D4738 )),
             ],
             Self::LushGrass => [
-                Rgba(color!( #387C38 )),
-                Rgba(color!( #347634 )),
-                Rgba(color!( #307030 )),
-                Rgba(color!( #2C6A2C )),
+                Rgba(color!(rgb(48, 162, 54))),
+                Rgba(color!(rgb(45, 155, 51))),
+                Rgba(color!(rgb(43, 148, 48))),
+                Rgba(color!(rgb(40, 139, 44))),
             ],
         }
     }

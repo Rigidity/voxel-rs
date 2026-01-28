@@ -16,6 +16,7 @@ fn main() -> Result<()> {
         )
         .add_plugins((PlayerPlugin, WorldPlugin))
         .add_plugins(FpsOverlayPlugin::default())
+        .insert_resource(ClearColor(Color::linear_rgb(0.1, 0.4, 0.7)))
         .run();
 
     Ok(())

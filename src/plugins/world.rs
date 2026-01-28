@@ -22,7 +22,7 @@ impl Plugin for WorldPlugin {
             .insert_resource(World {
                 center_pos: IVec3::ZERO,
                 generator: WorldGenerator::new(),
-                generation_radius: 12,
+                generation_radius: 8,
                 generation_tasks: IndexMap::new(),
                 mesh_tasks: IndexMap::new(),
                 chunks: IndexMap::new(),
