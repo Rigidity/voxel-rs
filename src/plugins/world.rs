@@ -94,6 +94,7 @@ impl World {
 
         if chunk.mesh_status == MeshStatus::Complete {
             chunk.mesh_status = MeshStatus::Queued;
+            self.mesh_tasks.swap_remove(&chunk_pos);
         }
 
         for x in -1..=1 {
@@ -295,6 +296,9 @@ fn update_world(
         if let Some(chunk) = world.chunks.swap_remove(&chunk_pos) {
             commands.entity(chunk.entity).despawn();
         }
+
+        world.mesh_tasks.swap_remove(&chunk_pos);
+        world.generation_tasks.swap_remove(&chunk_pos);
     }
 
     let mut chunks_to_generate = Vec::new();
@@ -350,12 +354,17 @@ fn update_world(
         for x in -1..=1 {
             for y in -1..=1 {
                 for z in -1..=1 {
-                    let neighbor = chunk_pos + IVec3::new(x, y, z);
+                    if x == 0 && y == 0 && z == 0 {
+                        continue;
+                    }
 
-                    if let Some(neighbor) = world.chunks.get_mut(&neighbor)
+                    let neighbor_pos = chunk_pos + IVec3::new(x, y, z);
+
+                    if let Some(neighbor) = world.chunks.get_mut(&neighbor_pos)
                         && neighbor.mesh_status == MeshStatus::Complete
                     {
                         neighbor.mesh_status = MeshStatus::Queued;
+                        world.mesh_tasks.swap_remove(&neighbor_pos);
                     }
                 }
             }
