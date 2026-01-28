@@ -40,6 +40,7 @@ fn setup_player(mut commands: Commands) {
                 yaw: 0.0,
             },
             Transform::from_xyz(0.0, 50.0, 0.0),
+            Visibility::Visible,
         ))
         .with_children(|children| {
             children.spawn((
