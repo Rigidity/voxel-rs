@@ -1,4 +1,4 @@
-use std::{cmp::Reverse, collections::HashMap};
+use std::{cmp::Reverse, collections::HashMap, sync::Arc};
 
 use bevy::{
     math::USizeVec3,
@@ -22,7 +22,7 @@ impl Plugin for WorldPlugin {
             .insert_resource(World {
                 center_pos: IVec3::ZERO,
                 generator: WorldGenerator::new(),
-                generation_radius: 8,
+                generation_radius: 12,
                 generation_tasks: IndexMap::new(),
                 mesh_tasks: IndexMap::new(),
                 chunks: IndexMap::new(),
@@ -157,13 +157,13 @@ enum MeshStatus {
 
 #[derive(Debug, Clone)]
 pub struct ChunkData {
-    blocks: Vec<Option<Block>>,
+    blocks: Arc<Vec<Option<Block>>>,
 }
 
 impl Default for ChunkData {
     fn default() -> Self {
         Self {
-            blocks: vec![None; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE],
+            blocks: Arc::new(vec![None; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]),
         }
     }
 }
@@ -179,7 +179,7 @@ impl ChunkData {
 
     pub fn set_block(&mut self, local_pos: USizeVec3, block: Option<Block>) {
         let index = self.index(local_pos);
-        self.blocks[index] = block;
+        Arc::make_mut(&mut self.blocks)[index] = block;
     }
 
     fn index(&self, local_pos: USizeVec3) -> usize {
