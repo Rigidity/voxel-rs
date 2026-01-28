@@ -21,3 +21,6 @@ rayon = "1.11.0"
 strum = { version = "0.27.2", features = ["derive"] }
 wgpu = "28.0.0"
 winit = "0.30.12"
+egui = { git = "https://github.com/SuchAFuriousDeath/egui", rev = "cf4060c5bf142952c1a8c49a3f6aa4b5cbb0d6fc" }
+egui-winit = { git = "https://github.com/SuchAFuriousDeath/egui", rev = "cf4060c5bf142952c1a8c49a3f6aa4b5cbb0d6fc" }
+egui-wgpu = { git = "https://github.com/SuchAFuriousDeath/egui", rev = "cf4060c5bf142952c1a8c49a3f6aa4b5cbb0d6fc", features = ["winit"] }

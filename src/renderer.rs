@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use egui_wgpu::ScreenDescriptor;
 use wgpu::util::DeviceExt;
-use winit::window::Window;
+use winit::{event::WindowEvent, window::Window};
 
-use crate::{Camera, Projection, Texture, VoxelPipeline, World};
+use crate::{Camera, Projection, Texture, UiRenderer, VoxelPipeline, World};
 
 pub struct Renderer {
     surface: wgpu::Surface<'static>,
@@ -15,6 +16,8 @@ pub struct Renderer {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     voxel_pipeline: VoxelPipeline,
+    ui_renderer: UiRenderer,
+    window: Arc<Window>,
 }
 
 impl Renderer {
@@ -26,7 +29,7 @@ impl Renderer {
             ..Default::default()
         });
 
-        let surface = instance.create_surface(window)?;
+        let surface = instance.create_surface(window.clone())?;
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -107,6 +110,8 @@ impl Renderer {
         let voxel_pipeline =
             VoxelPipeline::new(&device, &queue, config.format, &camera_bind_group_layout);
 
+        let ui_renderer = UiRenderer::new(&device, config.format, None, 1, &window);
+
         Ok(Self {
             surface,
             device,
@@ -117,6 +122,8 @@ impl Renderer {
             camera_buffer,
             camera_bind_group,
             voxel_pipeline,
+            ui_renderer,
+            window,
         })
     }
 
@@ -130,6 +137,10 @@ impl Renderer {
 
         self.depth_texture =
             Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+    }
+
+    pub fn handle_input(&mut self, window: &Window, event: &WindowEvent) {
+        self.ui_renderer.handle_input(window, event);
     }
 
     pub fn update_camera(&self, camera: &Camera, projection: &Projection) {
@@ -195,6 +206,29 @@ impl Renderer {
             .render(&mut render_pass, &self.camera_bind_group);
 
         drop(render_pass);
+
+        let scale_factor = self.window.scale_factor() as f32;
+
+        let screen_descriptor = ScreenDescriptor {
+            size_in_pixels: [self.config.width, self.config.height],
+            pixels_per_point: scale_factor,
+        };
+
+        self.ui_renderer.render(
+            &self.device,
+            &self.queue,
+            &mut encoder,
+            &self.window,
+            &view,
+            screen_descriptor,
+            |ui| {
+                ui.label("Label!");
+
+                if ui.button("Button!").clicked() {
+                    println!("boom!")
+                }
+            },
+        );
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

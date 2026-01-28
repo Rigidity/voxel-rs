@@ -62,6 +62,8 @@ impl ApplicationHandler for App {
             return;
         };
 
+        state.renderer.handle_input(&state.window, &event);
+
         match event {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
