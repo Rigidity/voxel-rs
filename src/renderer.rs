@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
+use egui::{Frame, ImageSource, Panel, TextureHandle, TextureOptions, load::SizedTexture};
 use egui_wgpu::ScreenDescriptor;
+use image::{DynamicImage, EncodableLayout};
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
@@ -18,6 +20,7 @@ pub struct Renderer {
     voxel_pipeline: VoxelPipeline,
     ui_renderer: UiRenderer,
     window: Arc<Window>,
+    ui_image: TextureHandle,
 }
 
 impl Renderer {
@@ -112,6 +115,27 @@ impl Renderer {
 
         let ui_renderer = UiRenderer::new(&device, config.format, None, 1, &window);
 
+        let texture = voxel_pipeline.textures()[2].clone();
+
+        let color_image = match &texture {
+            DynamicImage::ImageRgb8(image) => egui::ColorImage::from_rgb(
+                [image.width() as usize, image.height() as usize],
+                image.as_bytes(),
+            ),
+            other => {
+                let image = other.to_rgba8();
+                egui::ColorImage::from_rgba_unmultiplied(
+                    [image.width() as usize, image.height() as usize],
+                    image.as_bytes(),
+                )
+            }
+        };
+
+        let handle =
+            ui_renderer
+                .context()
+                .load_texture("test", color_image, TextureOptions::NEAREST);
+
         Ok(Self {
             surface,
             device,
@@ -124,6 +148,7 @@ impl Renderer {
             voxel_pipeline,
             ui_renderer,
             window,
+            ui_image: handle,
         })
     }
 
@@ -222,11 +247,26 @@ impl Renderer {
             &view,
             screen_descriptor,
             |ui| {
-                ui.label("Label!");
-
-                if ui.button("Button!").clicked() {
-                    println!("boom!")
-                }
+                Panel::bottom("hotbar")
+                    .show_separator_line(false)
+                    .frame(Frame::NONE)
+                    .show_inside(ui, |ui| {
+                        Frame::new()
+                            .fill(egui::Color32::from_black_alpha(128))
+                            .corner_radius(egui::CornerRadius::same(8))
+                            .inner_margin(egui::Margin::same(8))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing = egui::vec2(8.0, 0.0);
+                                    for _ in 0..9 {
+                                        ui.image(ImageSource::Texture(SizedTexture::new(
+                                            &self.ui_image,
+                                            self.ui_image.size_vec2() * 3.0,
+                                        )));
+                                    }
+                                });
+                            });
+                    });
             },
         );
 

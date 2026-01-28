@@ -43,6 +43,10 @@ impl UiRenderer {
         }
     }
 
+    pub fn context(&self) -> &Context {
+        self.state.egui_ctx()
+    }
+
     pub fn handle_input(&mut self, window: &Window, event: &WindowEvent) {
         let _ = self.state.on_window_event(window, event);
     }

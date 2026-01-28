@@ -1,6 +1,7 @@
 use std::{cmp::Reverse, sync::Arc};
 
 use glam::IVec3;
+use image::DynamicImage;
 use indexmap::IndexMap;
 use oneshot::TryRecvError;
 use strum::IntoEnumIterator;
@@ -18,6 +19,7 @@ pub struct VoxelPipeline {
     chunk_meshes: IndexMap<IVec3, ChunkMesh>,
     mesh_tasks: IndexMap<IVec3, oneshot::Receiver<Option<ChunkMesh>>>,
     registry: Arc<Registry>,
+    textures: Vec<DynamicImage>,
 }
 
 impl VoxelPipeline {
@@ -40,7 +42,7 @@ impl VoxelPipeline {
 
         log::info!("Generating an array of {} textures", textures.len());
 
-        let texture_array = TextureArray::new(device, queue, textures);
+        let texture_array = TextureArray::new(device, queue, textures.clone());
 
         let chunk_position_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -120,7 +122,16 @@ impl VoxelPipeline {
             chunk_meshes: IndexMap::new(),
             mesh_tasks: IndexMap::new(),
             registry: Arc::new(registry),
+            textures,
         }
+    }
+
+    pub fn registry(&self) -> &Registry {
+        &self.registry
+    }
+
+    pub fn textures(&self) -> &[DynamicImage] {
+        &self.textures
     }
 
     pub fn tick(&mut self, device: &wgpu::Device, world: &mut World) {
