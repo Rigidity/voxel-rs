@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{cmp::Reverse, sync::Arc};
 
 use glam::IVec3;
 use indexmap::IndexMap;
@@ -7,8 +7,8 @@ use strum::IntoEnumIterator;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    BlockKind, CHUNK_SIZE, ChunkMesh, ChunkVertex, Registry, RelevantChunks, Texture, TextureArray,
-    TextureArrayBuilder, World,
+    BlockKind, CHUNK_SIZE, ChunkMesh, ChunkVertex, MeshStatus, Registry, RelevantChunks, Texture,
+    TextureArray, TextureArrayBuilder, World,
 };
 
 pub struct VoxelPipeline {
@@ -134,15 +134,28 @@ impl VoxelPipeline {
             .chunks
             .keys()
             .copied()
-            .filter(|chunk_pos| {
-                world.chunks[chunk_pos].is_dirty() && !self.mesh_tasks.contains_key(chunk_pos)
+            .map(|chunk_pos| (chunk_pos, world.chunks[&chunk_pos].mesh_status()))
+            .filter(|&(chunk_pos, status)| {
+                status != MeshStatus::Complete && !self.mesh_tasks.contains_key(&chunk_pos)
             })
             .collect::<Vec<_>>();
 
-        chunks_to_mesh.sort_by_key(|chunk_pos| world.chunk_sort_key(*chunk_pos));
+        chunks_to_mesh
+            .sort_by_key(|&(chunk_pos, status)| (Reverse(status), world.chunk_sort_key(chunk_pos)));
 
-        for chunk_pos in chunks_to_mesh {
-            if self.mesh_tasks.len() >= rayon::current_num_threads() {
+        let has_modified = chunks_to_mesh
+            .iter()
+            .any(|&(_chunk_pos, status)| status == MeshStatus::Urgent);
+
+        if has_modified {
+            self.mesh_tasks
+                .retain(|chunk_pos, _| world.chunks[chunk_pos].mesh_status() == MeshStatus::Urgent);
+        }
+
+        for (chunk_pos, status) in chunks_to_mesh {
+            if self.mesh_tasks.len() >= rayon::current_num_threads()
+                || (has_modified && status != MeshStatus::Urgent)
+            {
                 break;
             }
 
@@ -210,7 +223,7 @@ impl VoxelPipeline {
                             self.chunk_meshes.insert(*chunk_pos, mesh);
                         }
 
-                        chunk.clear_dirty();
+                        chunk.set_mesh_complete();
                     }
 
                     false

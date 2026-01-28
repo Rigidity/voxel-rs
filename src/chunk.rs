@@ -2,20 +2,26 @@ use glam::USizeVec3;
 
 use crate::{Block, ChunkData};
 
-pub const CHUNK_SIZE: usize = 32;
-
 #[derive(Debug, Clone)]
 pub struct Chunk {
-    pub data: ChunkData,
-    is_dirty: bool,
+    data: ChunkData,
+    mesh_status: MeshStatus,
 }
 
 impl Chunk {
     pub fn new(data: ChunkData) -> Self {
         Self {
             data,
-            is_dirty: true,
+            mesh_status: MeshStatus::Queued,
         }
+    }
+
+    pub fn data(&self) -> &ChunkData {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut ChunkData {
+        &mut self.data
     }
 
     pub fn get_block(&self, local_pos: USizeVec3) -> Option<Block> {
@@ -24,18 +30,35 @@ impl Chunk {
 
     pub fn set_block(&mut self, local_pos: USizeVec3, block: Option<Block>) {
         self.data.set_block(local_pos, block);
-        self.is_dirty = true;
     }
 
-    pub fn is_dirty(&self) -> bool {
-        self.is_dirty
+    pub fn mesh_status(&self) -> MeshStatus {
+        self.mesh_status
     }
 
-    pub fn clear_dirty(&mut self) {
-        self.is_dirty = false;
+    pub fn queue_remesh(&mut self) {
+        if self.mesh_status != MeshStatus::Urgent {
+            self.mesh_status = MeshStatus::Queued;
+        }
     }
 
-    pub fn set_dirty(&mut self) {
-        self.is_dirty = true;
+    pub fn queue_urgent_remesh(&mut self) {
+        self.mesh_status = MeshStatus::Urgent;
     }
+
+    pub fn set_mesh_complete(&mut self) {
+        self.mesh_status = MeshStatus::Complete;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MeshStatus {
+    /// The chunk already has a mesh and hasn't been modified.
+    Complete,
+
+    /// The chunk is visible and should be meshed based on distance from the player.
+    Queued,
+
+    /// The chunk should be remeshed first.
+    Urgent,
 }

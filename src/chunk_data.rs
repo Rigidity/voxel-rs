@@ -1,6 +1,8 @@
 use glam::USizeVec3;
 
-use crate::{Block, CHUNK_SIZE};
+use crate::Block;
+
+pub const CHUNK_SIZE: usize = 32;
 
 #[derive(Debug, Clone)]
 pub struct ChunkData {

@@ -88,7 +88,7 @@ impl World {
                                 let neighbor = *chunk_pos + IVec3::new(x, y, z);
 
                                 if let Some(neighbor) = self.chunks.get_mut(&neighbor) {
-                                    neighbor.set_dirty();
+                                    neighbor.queue_remesh();
                                 }
                             }
                         }
@@ -145,17 +145,25 @@ impl World {
     pub fn set_block(&mut self, world_pos: IVec3, block: Option<Block>) {
         let chunk_pos = Self::chunk_pos(world_pos);
         let local_pos = Self::local_pos(world_pos);
+
         let Some(chunk) = self.chunks.get_mut(&chunk_pos) else {
             return;
         };
+
         chunk.set_block(local_pos, block);
+        chunk.queue_remesh();
 
         for x in -1..=1 {
             for y in -1..=1 {
                 for z in -1..=1 {
                     let neighbor = chunk_pos + IVec3::new(x, y, z);
+
+                    if neighbor == chunk_pos {
+                        continue;
+                    }
+
                     if let Some(neighbor) = self.chunks.get_mut(&neighbor) {
-                        neighbor.set_dirty();
+                        neighbor.queue_urgent_remesh();
                     }
                 }
             }

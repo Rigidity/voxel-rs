@@ -18,7 +18,7 @@ impl RelevantChunks {
                 for z in -1..=1 {
                     let chunk_pos = center_pos + IVec3::new(x, y, z);
                     if let Some(chunk) = world.chunks.get(&chunk_pos) {
-                        chunks.insert(chunk_pos, chunk.data.clone());
+                        chunks.insert(chunk_pos, chunk.data().clone());
                     }
                 }
             }
