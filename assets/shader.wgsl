@@ -4,6 +4,7 @@
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var my_array_texture_sampler: sampler;
 
 struct VertexInput {
+    @builtin(instance_index) instance_index: u32,
     @location(0) data: u32,
     @location(1) texture_index: u32,
 }
@@ -32,7 +33,7 @@ fn vs_main(
     var out: VertexOutput;
     out.tex_coords = tex_coords;
     out.ao = 0.7 + f32(ao) * 0.1;
-    out.clip_position = mesh_position_local_to_clip(get_world_from_local(0), position);
+    out.clip_position = mesh_position_local_to_clip(get_world_from_local(model.instance_index), position);
     out.texture_index = model.texture_index;
     return out;
 }

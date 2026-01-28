@@ -22,7 +22,7 @@ impl Plugin for WorldPlugin {
             .insert_resource(World {
                 center_pos: IVec3::ZERO,
                 generator: WorldGenerator::new(),
-                generation_radius: 4,
+                generation_radius: 12,
                 generation_tasks: IndexMap::new(),
                 mesh_tasks: IndexMap::new(),
                 chunks: IndexMap::new(),
@@ -319,7 +319,7 @@ fn update_world(
     let mut exceeded = false;
 
     for chunk_pos in chunks_to_generate {
-        if world.generation_tasks.len() >= task_pool.thread_num() {
+        if world.generation_tasks.len() >= 16 {
             exceeded = true;
             break;
         }
@@ -434,9 +434,7 @@ fn update_world(
     }
 
     for (chunk_pos, status) in chunks_to_mesh {
-        if world.mesh_tasks.len() >= task_pool.thread_num()
-            || (has_modified && status != MeshStatus::Urgent)
-        {
+        if world.mesh_tasks.len() >= 16 || (has_modified && status != MeshStatus::Urgent) {
             break;
         }
 
