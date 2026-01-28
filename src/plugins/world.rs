@@ -3,6 +3,7 @@ use std::{cmp::Reverse, collections::HashMap};
 use bevy::{
     math::USizeVec3,
     prelude::*,
+    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
     tasks::{AsyncComputeTaskPool, Task, futures::check_ready},
 };
 use indexmap::IndexMap;
@@ -17,18 +18,24 @@ pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(World {
-            center_pos: IVec3::ZERO,
-            generator: WorldGenerator::new(),
-            generation_radius: 4,
-            generation_tasks: IndexMap::new(),
-            mesh_tasks: IndexMap::new(),
-            chunks: IndexMap::new(),
-            registry: Registry::new(),
-        })
-        .add_systems(Startup, setup_registry)
-        .add_systems(Update, update_world);
+        app.add_plugins(MaterialPlugin::<ChunkMaterial>::default())
+            .insert_resource(World {
+                center_pos: IVec3::ZERO,
+                generator: WorldGenerator::new(),
+                generation_radius: 4,
+                generation_tasks: IndexMap::new(),
+                mesh_tasks: IndexMap::new(),
+                chunks: IndexMap::new(),
+                registry: Registry::new(),
+            })
+            .add_systems(Startup, setup_registry)
+            .add_systems(Update, update_world);
     }
+}
+
+#[derive(Resource)]
+pub struct BlockTextureArray {
+    pub handle: Handle<Image>,
 }
 
 #[derive(Resource)]
@@ -214,7 +221,11 @@ impl RelevantChunks {
     }
 }
 
-fn setup_registry(mut world: ResMut<World>) {
+fn setup_registry(
+    mut commands: Commands,
+    mut world: ResMut<World>,
+    mut images: ResMut<Assets<Image>>,
+) {
     let mut builder = TextureArrayBuilder::new(16, 16);
 
     let atlas = image::load_from_memory(include_bytes!("../../textures/textures.png")).unwrap();
@@ -226,6 +237,33 @@ fn setup_registry(mut world: ResMut<World>) {
     let textures = builder.into_textures();
 
     log::info!("Generating an array of {} textures", textures.len());
+
+    // Convert Vec<DynamicImage> into a texture array
+    let texture_size = 16u32;
+    let array_layers = textures.len() as u32;
+
+    let mut texture_array_data = Vec::new();
+
+    for texture in textures {
+        let rgba = texture.to_rgba8();
+        texture_array_data.extend_from_slice(&rgba);
+    }
+
+    let texture_array = Image::new(
+        Extent3d {
+            width: texture_size,
+            height: texture_size,
+            depth_or_array_layers: array_layers,
+        },
+        TextureDimension::D2,
+        texture_array_data,
+        TextureFormat::Rgba8UnormSrgb,
+        Default::default(),
+    );
+
+    let handle = images.add(texture_array);
+
+    commands.insert_resource(BlockTextureArray { handle });
 }
 
 fn update_world(
@@ -234,6 +272,7 @@ fn update_world(
     player: Query<&GlobalTransform, With<Player>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ChunkMaterial>>,
+    texture_array: Res<BlockTextureArray>,
 ) {
     let player = player.single().unwrap();
     let player_world_pos = IVec3::new(
@@ -330,7 +369,9 @@ fn update_world(
                     chunk_pos.z as f32 * CHUNK_SIZE as f32,
                 ),
                 Visibility::Visible,
-                MeshMaterial3d(materials.add(ChunkMaterial { array_texture })),
+                MeshMaterial3d(materials.add(ChunkMaterial {
+                    array_texture: texture_array.handle.clone(),
+                })),
             ))
             .id();
 

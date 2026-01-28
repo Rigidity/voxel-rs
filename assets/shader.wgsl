@@ -29,24 +29,16 @@ fn vs_main(
     let position = vec4<f32>(f32(x), f32(y), f32(z), 1.0);
     let tex_coords = vec2<f32>(f32(u), f32(v));
 
-    let world_from_local = get_world_from_local(0);
-    let world_position = world_from_local * position;
-
     var out: VertexOutput;
     out.tex_coords = tex_coords;
     out.ao = 0.7 + f32(ao) * 0.1;
-    out.clip_position = mesh_position_local_to_clip(world_position);
+    out.clip_position = mesh_position_local_to_clip(get_world_from_local(0), position);
     out.texture_index = model.texture_index;
     return out;
 }
 
-@group(0) @binding(0)
-var texture_array: binding_array<texture_2d<f32>>;
-@group(0) @binding(1)
-var texture_sampler: sampler;
-
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let texture_color = textureSampleLevel(texture_array[in.texture_index], texture_sampler, in.tex_coords, 0.0);
+    let texture_color = textureSampleLevel(my_array_texture, my_array_texture_sampler, in.tex_coords, in.texture_index, 0.0);
     return vec4<f32>(texture_color.rgb * in.ao, texture_color.a);
 }
