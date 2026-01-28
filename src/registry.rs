@@ -17,7 +17,7 @@ impl BlockTextureKey {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Registry {
     block_texture_indices: HashMap<BlockTextureKey, u32>,
 }

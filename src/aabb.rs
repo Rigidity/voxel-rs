@@ -1,4 +1,4 @@
-use glam::Vec3;
+use bevy::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Aabb {

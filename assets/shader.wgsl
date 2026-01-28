@@ -1,11 +1,7 @@
-struct CameraUniform {
-    view_proj: mat4x4<f32>,
-};
-@group(1) @binding(0)
-var<uniform> camera: CameraUniform;
+#import bevy_pbr::mesh_functions::{get_world_from_local, mesh_position_local_to_clip}
 
-@group(2) @binding(0)
-var<uniform> chunk_position: vec3<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(0) var my_array_texture: texture_2d_array<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(1) var my_array_texture_sampler: sampler;
 
 struct VertexInput {
     @location(0) data: u32,
@@ -30,13 +26,16 @@ fn vs_main(
     let v = (model.data >> 12) & 0x01;
     let ao = (model.data >> 10) & 0x03;
 
-    let position = vec3<f32>(f32(x), f32(y), f32(z));
+    let position = vec4<f32>(f32(x), f32(y), f32(z), 1.0);
     let tex_coords = vec2<f32>(f32(u), f32(v));
+
+    let world_from_local = get_world_from_local(0);
+    let world_position = world_from_local * position;
 
     var out: VertexOutput;
     out.tex_coords = tex_coords;
     out.ao = 0.7 + f32(ao) * 0.1;
-    out.clip_position = camera.view_proj * vec4<f32>(chunk_position + position, 1.0);
+    out.clip_position = mesh_position_local_to_clip(world_position);
     out.texture_index = model.texture_index;
     return out;
 }

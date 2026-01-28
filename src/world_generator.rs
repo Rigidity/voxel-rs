@@ -1,4 +1,7 @@
-use glam::{DVec3, IVec3, USizeVec3};
+use bevy::{
+    math::{DVec3, USizeVec3},
+    prelude::*,
+};
 use noise::{NoiseFn, Perlin};
 
 use crate::{

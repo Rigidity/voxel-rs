@@ -1,4 +1,4 @@
-use glam::Vec3;
+use bevy::prelude::*;
 use image::{ColorType, DynamicImage, GenericImageView, Rgba};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
