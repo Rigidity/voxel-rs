@@ -438,20 +438,21 @@ fn update_world(
             break;
         }
 
-        let neighbors = [
-            chunk_pos - IVec3::X,
-            chunk_pos + IVec3::X,
-            chunk_pos - IVec3::Y,
-            chunk_pos + IVec3::Y,
-            chunk_pos - IVec3::Z,
-            chunk_pos + IVec3::Z,
-        ];
-
         let mut should_generate = true;
 
-        for neighbor in neighbors {
-            should_generate &=
-                world.chunks.contains_key(&neighbor) || !world.is_visible_chunk(neighbor);
+        for x in -1..=1 {
+            for y in -1..=1 {
+                for z in -1..=1 {
+                    if x == 0 && y == 0 && z == 0 {
+                        continue;
+                    }
+
+                    let neighbor = chunk_pos + IVec3::new(x, y, z);
+
+                    should_generate &=
+                        world.chunks.contains_key(&neighbor) || !world.is_visible_chunk(neighbor);
+                }
+            }
         }
 
         if !should_generate {

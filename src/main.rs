@@ -1,4 +1,4 @@
-use bevy::{dev_tools::fps_overlay::FpsOverlayPlugin, prelude::*, window::PresentMode};
+use bevy::{dev_tools::fps_overlay::FpsOverlayPlugin, prelude::*, window::WindowResolution};
 use voxel::{PlayerPlugin, WorldPlugin};
 
 fn main() -> Result<()> {
@@ -8,7 +8,9 @@ fn main() -> Result<()> {
                 .set(ImagePlugin::default_nearest())
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        present_mode: PresentMode::Immediate,
+                        title: "Defaria".to_string(),
+                        resolution: WindowResolution::new(1200, 675),
+                        position: WindowPosition::Centered(MonitorSelection::Primary),
                         ..Default::default()
                     }),
                     ..Default::default()
