@@ -2,6 +2,12 @@ use image::{ImageBuffer, Rgba};
 use num_derive::{FromPrimitive, ToPrimitive};
 use strum::{Display, EnumIter};
 
+macro_rules! color {
+    ( $( $color:tt )* ) => {
+        csscolorparser::parse(stringify!($( $color )*)).unwrap().to_rgba8()
+    };
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 pub enum MaterialKind {
     #[strum(to_string = "Rock")]
@@ -49,34 +55,34 @@ impl Material {
     pub fn palette(&self) -> [Rgba<u8>; 4] {
         match self {
             Self::Shale => [
-                Rgba([0x94, 0x94, 0x94, 0xFF]),
-                Rgba([0x83, 0x83, 0x83, 0xFF]),
-                Rgba([0x73, 0x73, 0x73, 0xFF]),
-                Rgba([0x65, 0x65, 0x65, 0xFF]),
+                Rgba(color!( #949494 )),
+                Rgba(color!( #838383 )),
+                Rgba(color!( #737373 )),
+                Rgba(color!( #656565 )),
             ],
             Self::Chalk => [
-                Rgba([0xE5, 0xE5, 0xD8, 0xFF]),
-                Rgba([0xD8, 0xD8, 0xCC, 0xFF]),
-                Rgba([0xCC, 0xCC, 0xC0, 0xFF]),
-                Rgba([0xC0, 0xC0, 0xB5, 0xFF]),
+                Rgba(color!( #E5E5D8 )),
+                Rgba(color!( #D8D8CC )),
+                Rgba(color!( #CCC0C0 )),
+                Rgba(color!( #C0C0B5 )),
             ],
             Self::Loam => [
-                Rgba([0x66, 0x54, 0x3A, 0xFF]),
-                Rgba([0x62, 0x50, 0x37, 0xFF]),
-                Rgba([0x5E, 0x4C, 0x34, 0xFF]),
-                Rgba([0x5A, 0x48, 0x31, 0xFF]),
+                Rgba(color!(rgb(114, 89, 55))),
+                Rgba(color!(rgb(110, 84, 49))),
+                Rgba(color!(rgb(103, 79, 45))),
+                Rgba(color!(rgb(97, 72, 42))),
             ],
             Self::Clay => [
-                Rgba([0xA0, 0x5E, 0x4C, 0xFF]),
-                Rgba([0x94, 0x56, 0x45, 0xFF]),
-                Rgba([0x88, 0x4E, 0x3E, 0xFF]),
-                Rgba([0x7D, 0x47, 0x38, 0xFF]),
+                Rgba(color!( #A05E4C )),
+                Rgba(color!( #945645 )),
+                Rgba(color!( #884E3E )),
+                Rgba(color!( #7D4738 )),
             ],
             Self::LushGrass => [
-                Rgba([0x38, 0x7C, 0x38, 0xFF]),
-                Rgba([0x34, 0x76, 0x34, 0xFF]),
-                Rgba([0x30, 0x70, 0x30, 0xFF]),
-                Rgba([0x2C, 0x6A, 0x2C, 0xFF]),
+                Rgba(color!( #387C38 )),
+                Rgba(color!( #347634 )),
+                Rgba(color!( #307030 )),
+                Rgba(color!( #2C6A2C )),
             ],
         }
     }
