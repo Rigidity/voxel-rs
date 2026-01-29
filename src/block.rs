@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use image::{ColorType, DynamicImage, GenericImageView, Rgba};
+use image::{DynamicImage, GenericImageView};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use strum::{Display, EnumIter, IntoEnumIterator};
@@ -31,14 +31,14 @@ impl Block {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, Display)]
 #[repr(u16)]
 pub enum BlockKind {
-    #[strum(to_string = "Test")]
-    Test,
-
     #[strum(to_string = "Soil")]
     Soil,
 
     #[strum(to_string = "Rock")]
     Rock,
+
+    #[strum(to_string = "Wood Log")]
+    WoodLog,
 }
 
 impl BlockKind {
@@ -53,22 +53,6 @@ impl BlockKind {
         atlas: &DynamicImage,
     ) {
         match self {
-            Self::Test => {
-                let mut image = DynamicImage::new(16, 16, ColorType::Rgba8);
-
-                for pixel in image.as_mut_rgba8().unwrap().pixels_mut() {
-                    *pixel = Rgba([0xFF, 0xFF, 0xFF, 0xFF]);
-                }
-
-                image
-                    .as_mut_rgba8()
-                    .unwrap()
-                    .put_pixel(0, 0, Rgba([0xFF, 0x00, 0xFF, 0xFF]));
-
-                let texture_index = builder.add_image(image);
-
-                registry.register_texture(*self, 0, texture_index);
-            }
             Self::Soil => {
                 let base_image: DynamicImage = atlas.view(0, 0, 16, 16).to_image().into();
                 let overlay_image: DynamicImage = atlas.view(16, 0, 16, 16).to_image().into();
@@ -166,12 +150,49 @@ impl BlockKind {
                     }
                 }
             }
+            Self::WoodLog => {
+                let top_image: DynamicImage = atlas.view(0, 16, 16, 16).to_image().into();
+                let side_image: DynamicImage = atlas.view(16, 16, 16, 16).to_image().into();
+
+                for material in Material::iter() {
+                    if material.kind() == MaterialKind::Wood {
+                        let mut top_image = top_image.clone().into_rgba8();
+                        material.color_image(&mut top_image);
+
+                        let mut side_image = side_image.clone().into_rgba8();
+                        material.color_image(&mut side_image);
+
+                        let texture_index = builder.add_image(top_image.into());
+
+                        registry.register_texture(
+                            *self,
+                            WoodLogTextureData {
+                                wood_material: material,
+                                face: WoodLogFace::TopBottom,
+                            }
+                            .encode(),
+                            texture_index,
+                        );
+
+                        let texture_index = builder.add_image(side_image.into());
+
+                        registry.register_texture(
+                            *self,
+                            WoodLogTextureData {
+                                wood_material: material,
+                                face: WoodLogFace::Side,
+                            }
+                            .encode(),
+                            texture_index,
+                        );
+                    }
+                }
+            }
         }
     }
 
     pub fn texture_index(&self, data: u64, registry: &Registry, face: BlockFace) -> u32 {
         match self {
-            Self::Test => registry.texture_index(*self, 0),
             Self::Soil => {
                 let soil_data = SoilData::decode(data);
 
@@ -208,6 +229,30 @@ impl BlockKind {
                 }
             }
             Self::Rock => registry.texture_index(*self, data),
+            Self::WoodLog => {
+                let wood_log_data = WoodLogData::decode(data);
+
+                match face {
+                    BlockFace::Top | BlockFace::Bottom => registry.texture_index(
+                        *self,
+                        WoodLogTextureData {
+                            wood_material: wood_log_data.wood_material,
+                            face: WoodLogFace::TopBottom,
+                        }
+                        .encode(),
+                    ),
+                    BlockFace::Left | BlockFace::Right | BlockFace::Front | BlockFace::Back => {
+                        registry.texture_index(
+                            *self,
+                            WoodLogTextureData {
+                                wood_material: wood_log_data.wood_material,
+                                face: WoodLogFace::Side,
+                            }
+                            .encode(),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -330,6 +375,53 @@ impl BlockData for SoilTextureData {
                 grass_material: Material::from_u16((data >> 1) as u16).unwrap(),
             },
             _ => unreachable!(),
+        }
+    }
+}
+
+pub struct WoodLogData {
+    pub wood_material: Material,
+}
+
+impl BlockData for WoodLogData {
+    fn encode(&self) -> u64 {
+        self.wood_material.to_u16().unwrap() as u64
+    }
+
+    fn decode(data: u64) -> Self {
+        let wood_material = Material::from_u16((data & 0xFFFF) as u16).unwrap();
+
+        Self { wood_material }
+    }
+}
+
+struct WoodLogTextureData {
+    wood_material: Material,
+    face: WoodLogFace,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, ToPrimitive, FromPrimitive)]
+#[repr(u8)]
+enum WoodLogFace {
+    Side,
+    TopBottom,
+}
+
+impl BlockData for WoodLogTextureData {
+    fn encode(&self) -> u64 {
+        let wood_material = self.wood_material.to_u16().unwrap() as u64;
+        let face = self.face.to_u8().unwrap() as u64;
+
+        wood_material | (face << 16)
+    }
+
+    fn decode(data: u64) -> Self {
+        let wood_material = Material::from_u16((data & 0xFFFF) as u16).unwrap();
+        let face = WoodLogFace::from_u8((data >> 16) as u8).unwrap();
+
+        Self {
+            wood_material,
+            face,
         }
     }
 }

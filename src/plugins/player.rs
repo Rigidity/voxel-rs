@@ -4,7 +4,9 @@ use bevy::{
     window::{CursorGrabMode, CursorOptions},
 };
 
-use crate::{Aabb, Block, BlockKind, CollisionNormals, Velocity, World};
+use crate::{
+    Aabb, Block, BlockData, BlockKind, CollisionNormals, Material, Velocity, WoodLogData, World,
+};
 
 pub struct PlayerPlugin;
 
@@ -212,7 +214,13 @@ fn update_player(
         {
             world.set_block(
                 result.previous_position,
-                Some(Block::new(BlockKind::Test, 0)),
+                Some(Block::new(
+                    BlockKind::WoodLog,
+                    WoodLogData {
+                        wood_material: Material::Oak,
+                    }
+                    .encode(),
+                )),
             );
         }
     }

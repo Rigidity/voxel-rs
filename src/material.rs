@@ -18,6 +18,9 @@ pub enum MaterialKind {
 
     #[strum(to_string = "Grass")]
     Grass,
+
+    #[strum(to_string = "Wood")]
+    Wood,
 }
 
 #[derive(
@@ -39,6 +42,9 @@ pub enum Material {
 
     #[strum(to_string = "Lush Grass")]
     LushGrass,
+
+    #[strum(to_string = "Oak")]
+    Oak,
 }
 
 impl Material {
@@ -49,6 +55,7 @@ impl Material {
             Self::Loam => MaterialKind::Soil,
             Self::Clay => MaterialKind::Soil,
             Self::LushGrass => MaterialKind::Grass,
+            Self::Oak => MaterialKind::Wood,
         }
     }
 
@@ -83,6 +90,12 @@ impl Material {
                 Rgba(color!(rgb(45, 155, 51))),
                 Rgba(color!(rgb(43, 148, 48))),
                 Rgba(color!(rgb(40, 139, 44))),
+            ],
+            Self::Oak => [
+                Rgba(color!(rgb(130, 87, 65))),
+                Rgba(color!(rgb(122, 76, 51))),
+                Rgba(color!(rgb(110, 68, 43))),
+                Rgba(color!(rgb(100, 64, 41))),
             ],
         }
     }
