@@ -6,6 +6,10 @@ use bevy::{
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
     tasks::{AsyncComputeTaskPool, Task, futures::check_ready},
 };
+use bevy_egui::{
+    EguiContexts, EguiPlugin, EguiPrimaryContextPass,
+    egui::{self, Slider},
+};
 use indexmap::IndexMap;
 use strum::IntoEnumIterator;
 
@@ -19,6 +23,7 @@ pub struct WorldPlugin;
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<ChunkMaterial>::default())
+            .add_plugins(EguiPlugin::default())
             .insert_resource(World {
                 center_pos: IVec3::ZERO,
                 generator: WorldGenerator::new(),
@@ -29,7 +34,8 @@ impl Plugin for WorldPlugin {
                 registry: Registry::new(),
             })
             .add_systems(Startup, setup_registry)
-            .add_systems(Update, update_world);
+            .add_systems(Update, update_world)
+            .add_systems(EguiPrimaryContextPass, debug_ui);
     }
 }
 
@@ -523,4 +529,11 @@ fn get_neighbors(chunk_pos: IVec3) -> Vec<IVec3> {
     }
 
     neighbors
+}
+
+fn debug_ui(mut contexts: EguiContexts, mut world: ResMut<World>) -> Result {
+    egui::Window::new("Settings").show(contexts.ctx_mut()?, |ui| {
+        ui.add(Slider::new(&mut world.generation_radius, 1..=32).text("Generation Radius"));
+    });
+    Ok(())
 }

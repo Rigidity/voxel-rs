@@ -25,6 +25,7 @@ edition = "2024"
 # egui-winit = { git = "https://github.com/SuchAFuriousDeath/egui", rev = "cf4060c5bf142952c1a8c49a3f6aa4b5cbb0d6fc" }
 # egui-wgpu = { git = "https://github.com/SuchAFuriousDeath/egui", rev = "cf4060c5bf142952c1a8c49a3f6aa4b5cbb0d6fc", features = ["winit"] }
 bevy = { version = "0.18.0", features = ["bevy_dev_tools"] }
+bevy_egui = "0.39.0"
 csscolorparser = "0.8.1"
 image = "0.25.9"
 indexmap = "2.13.0"
