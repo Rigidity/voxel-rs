@@ -4,7 +4,7 @@ use bevy::{
     window::{CursorGrabMode, CursorOptions},
 };
 
-use crate::{Aabb, Block, BlockKind, World};
+use crate::{Aabb, Block, BlockKind, CollisionNormals, Velocity, World};
 
 pub struct PlayerPlugin;
 
@@ -19,8 +19,6 @@ const COYOTE_TIME: f32 = 0.075;
 
 #[derive(Component)]
 pub struct Player {
-    size: Vec3,
-    velocity: Vec3,
     grounded_timer: f32,
     pitch: f32,
     yaw: f32,
@@ -33,12 +31,12 @@ fn setup_player(mut commands: Commands) {
     commands
         .spawn((
             Player {
-                size: Vec3::new(0.6, 1.8, 0.6),
-                velocity: Vec3::ZERO,
                 grounded_timer: 0.0,
                 pitch: 0.0,
                 yaw: 0.0,
             },
+            Aabb::new(Vec3::ZERO, Vec3::new(0.6, 1.8, 0.6)),
+            Velocity(Vec3::ZERO),
             Transform::from_xyz(0.0, 50.0, 0.0),
             Visibility::Visible,
         ))
@@ -60,7 +58,7 @@ fn setup_player(mut commands: Commands) {
 fn update_player(
     time: Res<Time>,
     mut world: ResMut<World>,
-    mut player: Query<(&mut Player, &mut Transform)>,
+    mut player: Query<(&mut Player, &mut Velocity, &CollisionNormals)>,
     mut camera: Query<(&mut Transform, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
     input: Res<ButtonInput<KeyCode>>,
     mouse_input: Res<ButtonInput<MouseButton>>,
@@ -69,8 +67,12 @@ fn update_player(
 ) {
     let delta = time.delta_secs();
 
-    let (mut player, mut transform) = player.single_mut().unwrap();
+    let (mut player, mut velocity, collision_normals) = player.single_mut().unwrap();
     let (mut camera, camera_global) = camera.single_mut().unwrap();
+
+    if collision_normals.0.contains(&Vec3::Y) {
+        player.grounded_timer = COYOTE_TIME;
+    }
 
     player.grounded_timer = (player.grounded_timer - delta).max(0.0);
 
@@ -126,11 +128,11 @@ fn update_player(
     };
 
     // Apply friction first
-    player.velocity.x *= friction;
-    player.velocity.z *= friction;
+    velocity.0.x *= friction;
+    velocity.0.z *= friction;
 
     // Then accelerate towards target velocity
-    let current_horizontal = Vec3::new(player.velocity.x, 0.0, player.velocity.z);
+    let current_horizontal = Vec3::new(velocity.0.x, 0.0, velocity.0.z);
     let velocity_diff = target_velocity - current_horizontal;
     let max_acceleration = acceleration * delta;
     let acceleration_force = if velocity_diff.length_squared() > 0.0 {
@@ -140,28 +142,19 @@ fn update_player(
         Vec3::ZERO
     };
 
-    player.velocity.x += acceleration_force.x;
-    player.velocity.z += acceleration_force.z;
+    velocity.0.x += acceleration_force.x;
+    velocity.0.z += acceleration_force.z;
 
     if player.grounded_timer == 0.0 {
-        player.velocity.y += gravity * delta;
+        velocity.0.y += gravity * delta;
     }
 
-    player.velocity.y = player.velocity.y.max(-50.0);
+    velocity.0.y = velocity.0.y.max(-50.0);
 
     if input.pressed(KeyCode::Space) && player.grounded_timer > 0.0 {
-        player.velocity.y = jump_velocity;
+        velocity.0.y = jump_velocity;
         player.grounded_timer = 0.0;
     }
-
-    let delta_movement = player.velocity * delta;
-
-    move_with_collision(
-        &mut player,
-        &mut transform.translation,
-        delta_movement,
-        &world,
-    );
 
     if input.pressed(KeyCode::ArrowLeft) {
         player.yaw += rotation_speed;
@@ -225,101 +218,6 @@ fn update_player(
     }
 
     camera.rotation = Quat::from_euler(EulerRot::YXZ, player.yaw, player.pitch, 0.0);
-}
-
-fn move_with_collision(player: &mut Player, position: &mut Vec3, mut delta: Vec3, world: &World) {
-    for _ in 0..3 {
-        let collision = check_collision(Aabb::new(*position, player.size), delta, world)
-            .into_iter()
-            .min_by(|a, b| a.time.total_cmp(&b.time));
-
-        if let Some(Collision { time, normal }) = collision {
-            if normal.y == 1.0 {
-                player.grounded_timer = COYOTE_TIME;
-            }
-
-            const TOLERANCE: f32 = 1.0 / 4096.0;
-            *position += TOLERANCE * normal + delta * time;
-            let remaining_time = 1.0 - time;
-            delta = delta.reject_from_normalized(normal) * remaining_time;
-            player.velocity = player.velocity.reject_from_normalized(normal);
-        } else {
-            *position += delta;
-            return;
-        }
-    }
-}
-
-struct Collision {
-    time: f32,
-    normal: Vec3,
-}
-
-fn check_collision(source: Aabb, delta: Vec3, world: &World) -> Vec<Collision> {
-    let mut collisions = Vec::new();
-
-    let target = source.translate(delta);
-    let min = Vec3::min(source.min(), target.min()).floor();
-    let max = Vec3::max(source.max(), target.max()).ceil();
-
-    for x in min.x as i32..max.x as i32 {
-        for y in min.y as i32..max.y as i32 {
-            for z in min.z as i32..max.z as i32 {
-                let block_pos = IVec3::new(x, y, z);
-                if let Some(block) = world.get_block(block_pos)
-                    && let Some(block_aabb) = block.kind.get_aabb(block.data).map(|aabb| {
-                        aabb.translate(Vec3::new(
-                            block_pos.x as f32,
-                            block_pos.y as f32,
-                            block_pos.z as f32,
-                        ))
-                    })
-                {
-                    collisions.extend(swept_aabb(delta, source, block_aabb))
-                }
-            }
-        }
-    }
-
-    collisions
-}
-
-fn swept_aabb(delta: Vec3, moving: Aabb, still: Aabb) -> Option<Collision> {
-    let before = still.min() - moving.max();
-    let after = still.max() - moving.min();
-    let positive = delta.cmpgt(Vec3::ZERO);
-    let zero = delta.cmpeq(Vec3::ZERO);
-    let entry = Vec3::select(positive, before, after);
-    let entry = Vec3::select(zero, Vec3::NEG_INFINITY, entry / delta);
-
-    let exit = Vec3::select(positive, after, before);
-    let exit = Vec3::select(zero, Vec3::INFINITY, exit / delta);
-
-    let time = entry.max_element();
-
-    if !(0.0..=1.0).contains(&time) {
-        return None;
-    }
-
-    if time > exit.min_element() {
-        return None;
-    }
-
-    let normal = if time == entry.x && positive.x {
-        Vec3::NEG_X
-    } else if time == entry.x {
-        Vec3::X
-    } else if time == entry.y && positive.y {
-        Vec3::NEG_Y
-    } else if time == entry.y {
-        Vec3::Y
-    } else if positive.z {
-        Vec3::NEG_Z
-    } else {
-        Vec3::Z
-    };
-
-    Some(Collision { time, normal })
 }
 
 struct VoxelRaycastResult {

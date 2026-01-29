@@ -1,5 +1,5 @@
 use bevy::{dev_tools::fps_overlay::FpsOverlayPlugin, prelude::*, window::WindowResolution};
-use voxel::{PlayerPlugin, WorldPlugin};
+use voxel::{PhysicsPlugin, PlayerPlugin, WorldPlugin};
 
 fn main() -> Result<()> {
     App::new()
@@ -16,7 +16,7 @@ fn main() -> Result<()> {
                     ..Default::default()
                 }),
         )
-        .add_plugins((PlayerPlugin, WorldPlugin))
+        .add_plugins((PlayerPlugin, WorldPlugin, PhysicsPlugin))
         .add_plugins(FpsOverlayPlugin::default())
         .insert_resource(ClearColor(Color::linear_rgb(0.1, 0.4, 0.7)))
         .run();

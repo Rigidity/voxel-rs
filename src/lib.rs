@@ -1,4 +1,3 @@
-mod aabb;
 mod block;
 mod chunk_material;
 mod chunk_mesh;
@@ -8,7 +7,6 @@ mod registry;
 mod texture_array_builder;
 mod world_generator;
 
-pub use aabb::*;
 pub use block::*;
 pub use chunk_material::*;
 pub use chunk_mesh::*;
