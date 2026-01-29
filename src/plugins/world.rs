@@ -485,7 +485,6 @@ fn regenerate_meshes(commands: &mut Commands, world: &mut World, meshes: &mut As
 
     for (chunk_pos, mesh) in results {
         if let Some(chunk) = world.chunks.get_mut(&chunk_pos) {
-            // Insert the mesh into the chunk, if needed
             // if let Some(mesh) = mesh {
             //     commands
             //         .entity(chunk.entity)
