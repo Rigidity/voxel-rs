@@ -79,8 +79,9 @@ fn update_player(
     let jump_velocity = 13.0;
     let rotation_speed = 2.0 * delta;
 
-    let ground_acceleration = 150.0;
-    let air_acceleration = 70.0;
+    // Scale acceleration with walk_speed to maintain responsive movement
+    let ground_acceleration = walk_speed * 20.0;
+    let air_acceleration = walk_speed * 10.0;
     let ground_friction = 0.91;
     let air_friction = 0.98;
 
@@ -124,14 +125,23 @@ fn update_player(
         air_friction
     };
 
-    let velocity_diff = target_velocity - Vec3::new(player.velocity.x, 0.0, player.velocity.z);
-    let acceleration_force = velocity_diff.clamp_length_max(acceleration * delta);
+    // Apply friction first
+    player.velocity.x *= friction;
+    player.velocity.z *= friction;
+
+    // Then accelerate towards target velocity
+    let current_horizontal = Vec3::new(player.velocity.x, 0.0, player.velocity.z);
+    let velocity_diff = target_velocity - current_horizontal;
+    let max_acceleration = acceleration * delta;
+    let acceleration_force = if velocity_diff.length_squared() > 0.0 {
+        let diff_length = velocity_diff.length();
+        velocity_diff * (diff_length.min(max_acceleration) / diff_length)
+    } else {
+        Vec3::ZERO
+    };
 
     player.velocity.x += acceleration_force.x;
     player.velocity.z += acceleration_force.z;
-
-    player.velocity.x *= friction;
-    player.velocity.z *= friction;
 
     if player.grounded_timer == 0.0 {
         player.velocity.y += gravity * delta;

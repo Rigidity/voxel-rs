@@ -36,6 +36,7 @@ impl Plugin for WorldPlugin {
 #[derive(Resource)]
 pub struct BlockTextureArray {
     pub handle: Handle<Image>,
+    pub material: Handle<ChunkMaterial>,
 }
 
 #[derive(Resource)]
@@ -51,16 +52,9 @@ pub struct World {
 
 impl World {
     pub fn is_visible_chunk(&self, chunk_pos: IVec3) -> bool {
-        let horizontal_distance = Vec3::new(
-            chunk_pos.x as f32,
-            self.center_pos.y as f32,
-            chunk_pos.z as f32,
-        )
-        .distance(Vec3::new(
-            self.center_pos.x as f32,
-            self.center_pos.y as f32,
-            self.center_pos.z as f32,
-        ));
+        let horizontal_distance = Vec2::new(chunk_pos.x as f32, chunk_pos.z as f32).distance(
+            Vec2::new(self.center_pos.x as f32, self.center_pos.z as f32),
+        );
 
         if horizontal_distance > self.generation_radius as f32 {
             return false;
@@ -92,24 +86,13 @@ impl World {
 
         chunk.data.set_block(local_pos, block);
 
-        if chunk.mesh_status == MeshStatus::Complete {
-            chunk.mesh_status = MeshStatus::Queued;
-            self.mesh_tasks.swap_remove(&chunk_pos);
-        }
+        self.force_remesh(chunk_pos);
 
-        for x in -1..=1 {
-            for y in -1..=1 {
-                for z in -1..=1 {
-                    let neighbor = chunk_pos + IVec3::new(x, y, z);
+        for neighbor_pos in get_neighbors(chunk_pos) {
+            self.force_remesh(neighbor_pos);
 
-                    if neighbor == chunk_pos {
-                        continue;
-                    }
-
-                    if let Some(neighbor) = self.chunks.get_mut(&neighbor) {
-                        neighbor.mesh_status = MeshStatus::Urgent;
-                    }
-                }
+            if let Some(neighbor) = self.chunks.get_mut(&neighbor_pos) {
+                neighbor.mesh_status = MeshStatus::Urgent;
             }
         }
     }
@@ -133,6 +116,29 @@ impl World {
             local_pos.y as usize,
             local_pos.z as usize,
         )
+    }
+
+    fn update_center_pos(&mut self, position: Vec3) {
+        let player_world_pos = IVec3::new(position.x as i32, position.y as i32, position.z as i32);
+        self.center_pos = World::chunk_pos(player_world_pos);
+    }
+
+    fn chunks_to_unload(&self) -> Vec<IVec3> {
+        self.chunks
+            .keys()
+            .copied()
+            .filter(|chunk_pos| !self.is_visible_chunk(*chunk_pos))
+            .collect()
+    }
+
+    fn force_remesh(&mut self, chunk_pos: IVec3) {
+        if let Some(chunk) = self.chunks.get_mut(&chunk_pos)
+            && chunk.mesh_status != MeshStatus::Urgent
+        {
+            chunk.mesh_status = MeshStatus::Queued;
+        }
+
+        self.mesh_tasks.swap_remove(&chunk_pos);
     }
 }
 
@@ -226,6 +232,7 @@ fn setup_registry(
     mut commands: Commands,
     mut world: ResMut<World>,
     mut images: ResMut<Assets<Image>>,
+    mut materials: ResMut<Assets<ChunkMaterial>>,
 ) {
     let mut builder = TextureArrayBuilder::new(16, 16);
 
@@ -264,7 +271,11 @@ fn setup_registry(
 
     let handle = images.add(texture_array);
 
-    commands.insert_resource(BlockTextureArray { handle });
+    let material = materials.add(ChunkMaterial {
+        array_texture: handle.clone(),
+    });
+
+    commands.insert_resource(BlockTextureArray { handle, material });
 }
 
 fn update_world(
@@ -272,42 +283,46 @@ fn update_world(
     mut world: ResMut<World>,
     player: Query<&GlobalTransform, With<Player>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ChunkMaterial>>,
     texture_array: Res<BlockTextureArray>,
 ) {
     let player = player.single().unwrap();
-    let player_world_pos = IVec3::new(
-        player.translation().x as i32,
-        player.translation().y as i32,
-        player.translation().z as i32,
-    );
-    world.center_pos = World::chunk_pos(player_world_pos);
 
-    let task_pool = AsyncComputeTaskPool::get();
+    world.update_center_pos(player.translation());
 
-    let chunks_to_remove = world
-        .chunks
-        .keys()
-        .copied()
-        .filter(|chunk_pos| !world.is_visible_chunk(*chunk_pos))
-        .collect::<Vec<_>>();
+    unload_far_chunks(&mut commands, &mut world);
+    load_near_chunks(&mut commands, &mut world, texture_array.material.clone());
+    regenerate_meshes(&mut commands, &mut world, &mut meshes);
+}
 
-    for chunk_pos in chunks_to_remove {
+fn unload_far_chunks(commands: &mut Commands, world: &mut World) {
+    let chunks_to_unload = world.chunks_to_unload();
+
+    for chunk_pos in chunks_to_unload {
         if let Some(chunk) = world.chunks.swap_remove(&chunk_pos) {
             commands.entity(chunk.entity).despawn();
         }
 
         world.mesh_tasks.swap_remove(&chunk_pos);
         world.generation_tasks.swap_remove(&chunk_pos);
+
+        for neighbor_pos in get_neighbors(chunk_pos) {
+            world.force_remesh(neighbor_pos);
+        }
     }
+}
+
+fn load_near_chunks(commands: &mut Commands, world: &mut World, material: Handle<ChunkMaterial>) {
+    let task_pool = AsyncComputeTaskPool::get();
 
     let mut chunks_to_generate = Vec::new();
 
+    // Look for visible chunks in a cube around the player (not all of these are visible)
     for x in -world.generation_radius..=world.generation_radius {
         for y in -world.generation_radius..=world.generation_radius {
             for z in -world.generation_radius..=world.generation_radius {
                 let chunk_pos = world.center_pos + IVec3::new(x, y, z);
 
+                // Don't load chunks multiple times
                 if world.is_visible_chunk(chunk_pos)
                     && !world.chunks.contains_key(&chunk_pos)
                     && !world.generation_tasks.contains_key(&chunk_pos)
@@ -318,6 +333,7 @@ fn update_world(
         }
     }
 
+    // Sort chunks by distance from the player
     chunks_to_generate.sort_by_key(|chunk_pos| world.chunk_sort_key(*chunk_pos));
 
     let mut exceeded = false;
@@ -339,6 +355,7 @@ fn update_world(
 
     let mut results = HashMap::new();
 
+    // Collect generated chunks, and remove the tasks from the map
     world
         .generation_tasks
         .retain(|chunk_pos, task| match check_ready(task) {
@@ -351,25 +368,12 @@ fn update_world(
         });
 
     for (chunk_pos, data) in results {
-        for x in -1..=1 {
-            for y in -1..=1 {
-                for z in -1..=1 {
-                    if x == 0 && y == 0 && z == 0 {
-                        continue;
-                    }
-
-                    let neighbor_pos = chunk_pos + IVec3::new(x, y, z);
-
-                    if let Some(neighbor) = world.chunks.get_mut(&neighbor_pos)
-                        && neighbor.mesh_status == MeshStatus::Complete
-                    {
-                        neighbor.mesh_status = MeshStatus::Queued;
-                        world.mesh_tasks.swap_remove(&neighbor_pos);
-                    }
-                }
-            }
+        // Force remesh of neighbors, since their mesh will depend on this chunk
+        for neighbor_pos in get_neighbors(chunk_pos) {
+            world.force_remesh(neighbor_pos);
         }
 
+        // Add the entity to the world
         let entity = commands
             .spawn((
                 Transform::from_xyz(
@@ -378,12 +382,11 @@ fn update_world(
                     chunk_pos.z as f32 * CHUNK_SIZE as f32,
                 ),
                 Visibility::Visible,
-                MeshMaterial3d(materials.add(ChunkMaterial {
-                    array_texture: texture_array.handle.clone(),
-                })),
+                MeshMaterial3d(material.clone()),
             ))
             .id();
 
+        // Insert the data and queue it for meshing
         world.chunks.insert(
             chunk_pos,
             Chunk {
@@ -395,23 +398,17 @@ fn update_world(
     }
 
     if has_generations && world.generation_tasks.is_empty() && !exceeded {
-        println!(
+        log::info!(
             "Finished generating chunks, currently have {} loaded chunks",
             world.chunks.len()
         );
     }
+}
 
-    let tasks_to_remove = world
-        .mesh_tasks
-        .keys()
-        .copied()
-        .filter(|chunk_pos| !world.chunks.contains_key(chunk_pos))
-        .collect::<Vec<_>>();
+fn regenerate_meshes(commands: &mut Commands, world: &mut World, meshes: &mut Assets<Mesh>) {
+    let task_pool = AsyncComputeTaskPool::get();
 
-    for chunk_pos in tasks_to_remove {
-        world.mesh_tasks.swap_remove(&chunk_pos);
-    }
-
+    // We need to generate meshes a single time for queued chunks
     let mut chunks_to_mesh = world
         .chunks
         .keys()
@@ -422,15 +419,17 @@ fn update_world(
         })
         .collect::<Vec<_>>();
 
+    // Sort chunks by priority and distance from the player
     chunks_to_mesh
         .sort_by_key(|&(chunk_pos, status)| (Reverse(status), world.chunk_sort_key(chunk_pos)));
 
-    let has_modified = chunks_to_mesh
+    // Check if any chunks are urgent
+    let has_urgent = chunks_to_mesh
         .iter()
         .any(|&(_chunk_pos, status)| status == MeshStatus::Urgent);
 
-    if has_modified {
-        // TODO: Cleanup
+    // If any chunks are urgent, we need to regenerate their meshes first, so let's remove all other tasks
+    if has_urgent {
         let chunk_statuses: HashMap<IVec3, MeshStatus> = world
             .chunks
             .iter()
@@ -443,32 +442,24 @@ fn update_world(
     }
 
     for (chunk_pos, status) in chunks_to_mesh {
-        if world.mesh_tasks.len() >= 16 || (has_modified && status != MeshStatus::Urgent) {
+        if world.mesh_tasks.len() >= 16 || (has_urgent && status != MeshStatus::Urgent) {
             break;
         }
 
-        let mut should_generate = true;
+        // If there are any unloaded neighbors, we shouldn't waste time generating a mesh for this chunk yet
+        let mut should_mesh = true;
 
-        for x in -1..=1 {
-            for y in -1..=1 {
-                for z in -1..=1 {
-                    if x == 0 && y == 0 && z == 0 {
-                        continue;
-                    }
-
-                    let neighbor = chunk_pos + IVec3::new(x, y, z);
-
-                    should_generate &=
-                        world.chunks.contains_key(&neighbor) || !world.is_visible_chunk(neighbor);
-                }
-            }
+        for neighbor_pos in get_neighbors(chunk_pos) {
+            should_mesh &=
+                world.chunks.contains_key(&neighbor_pos) || !world.is_visible_chunk(neighbor_pos);
         }
 
-        if !should_generate {
+        if !should_mesh {
             continue;
         }
 
-        let relevant_chunks = RelevantChunks::from_world(&world, chunk_pos);
+        // Obtain a reference to neighboring chunks, since we need to generate the mesh for this chunk based on them
+        let relevant_chunks = RelevantChunks::from_world(world, chunk_pos);
 
         let registry = world.registry.clone();
 
@@ -480,6 +471,7 @@ fn update_world(
 
     let mut results = HashMap::new();
 
+    // Collect generated meshes, and remove the tasks from the map
     world
         .mesh_tasks
         .retain(|chunk_pos, task| match check_ready(task) {
@@ -493,13 +485,43 @@ fn update_world(
 
     for (chunk_pos, mesh) in results {
         if let Some(chunk) = world.chunks.get_mut(&chunk_pos) {
+            // Insert the mesh into the chunk, if needed
+            // if let Some(mesh) = mesh {
+            //     commands
+            //         .entity(chunk.entity)
+            //         .insert(Mesh3d(meshes.add(mesh)));
+            // } else {
+            //     commands.entity(chunk.entity).remove::<Mesh3d>();
+            // }
+
             if let Some(mesh) = mesh {
                 commands
                     .entity(chunk.entity)
-                    .insert(Mesh3d(meshes.add(mesh)));
+                    .insert((Visibility::Visible, Mesh3d(meshes.add(mesh))));
+            } else {
+                commands.entity(chunk.entity).insert(Visibility::Hidden);
             }
 
+            // Mark the chunk as complete so we don't mesh it again
             chunk.mesh_status = MeshStatus::Complete;
         }
     }
+}
+
+fn get_neighbors(chunk_pos: IVec3) -> Vec<IVec3> {
+    let mut neighbors = Vec::new();
+
+    for x in -1..=1 {
+        for y in -1..=1 {
+            for z in -1..=1 {
+                if x == 0 && y == 0 && z == 0 {
+                    continue;
+                }
+
+                neighbors.push(chunk_pos + IVec3::new(x, y, z));
+            }
+        }
+    }
+
+    neighbors
 }
