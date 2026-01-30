@@ -1,4 +1,5 @@
 mod block;
+mod chunk_data;
 mod chunk_material;
 mod chunk_mesh;
 mod material;
@@ -9,6 +10,7 @@ mod texture_array_builder;
 mod world_generator;
 
 pub use block::*;
+pub use chunk_data::*;
 pub use chunk_material::*;
 pub use chunk_mesh::*;
 pub use material::*;
