@@ -13,6 +13,8 @@ pub struct ChunkMaterial {
     #[texture(0, dimension = "2d_array")]
     #[sampler(1)]
     pub array_texture: Handle<Image>,
+    #[uniform(2)]
+    pub ao_factor: f32,
 }
 
 pub const ATTRIBUTE_PACKED_DATA: MeshVertexAttribute =

@@ -231,6 +231,7 @@ fn setup_registry(
 
     let material = materials.add(ChunkMaterial {
         array_texture: handle.clone(),
+        ao_factor: 0.3,
     });
 
     commands.insert_resource(BlockTextureArray { handle, material });

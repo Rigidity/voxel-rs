@@ -2,6 +2,7 @@
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var my_array_texture: texture_2d_array<f32>;
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var my_array_texture_sampler: sampler;
+@group(#{MATERIAL_BIND_GROUP}) @binding(2) var<uniform> ao_factor: f32;
 
 struct VertexInput {
     @builtin(instance_index) instance_index: u32,
@@ -32,7 +33,8 @@ fn vs_main(
 
     var out: VertexOutput;
     out.tex_coords = tex_coords;
-    out.ao = 0.7 + f32(ao) * 0.1;
+    let ao_value = f32(ao) / 3.0;
+    out.ao = mix(1.0, ao_value, ao_factor);
     out.clip_position = mesh_position_local_to_clip(get_world_from_local(model.instance_index), position);
     out.texture_index = model.texture_index;
     return out;
