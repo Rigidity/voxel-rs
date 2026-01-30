@@ -1,4 +1,4 @@
-use std::{cmp::Reverse, collections::HashMap, sync::Arc};
+use std::{cmp::Reverse, collections::HashMap, mem, path::PathBuf, sync::Arc};
 
 use bevy::{
     math::USizeVec3,
@@ -14,8 +14,8 @@ use indexmap::IndexMap;
 use strum::IntoEnumIterator;
 
 use crate::{
-    Block, BlockKind, ChunkMaterial, Player, Registry, TextureArrayBuilder, WorldGenerator,
-    generate_mesh,
+    Block, BlockKind, ChunkMaterial, Player, RegionManager, Registry, TextureArrayBuilder,
+    WorldGenerator, generate_mesh,
 };
 
 pub struct WorldPlugin;
@@ -26,15 +26,17 @@ impl Plugin for WorldPlugin {
             .add_plugins(EguiPlugin::default())
             .insert_resource(World {
                 center_pos: IVec3::ZERO,
+                region_manager: Arc::new(RegionManager::new(PathBuf::from("regions"))),
                 generator: WorldGenerator::new(),
                 generation_radius: 12,
                 generation_tasks: IndexMap::new(),
                 mesh_tasks: IndexMap::new(),
                 chunks: IndexMap::new(),
+                chunks_to_save: HashMap::new(),
                 registry: Registry::new(),
             })
             .add_systems(Startup, setup_registry)
-            .add_systems(Update, update_world)
+            .add_systems(Update, (update_world, save_chunks).chain_ignore_deferred())
             .add_systems(EguiPrimaryContextPass, debug_ui);
     }
 }
@@ -48,11 +50,13 @@ pub struct BlockTextureArray {
 #[derive(Resource)]
 pub struct World {
     center_pos: IVec3,
+    region_manager: Arc<RegionManager>,
     generator: WorldGenerator,
     generation_radius: i32,
-    generation_tasks: IndexMap<IVec3, Task<ChunkData>>,
+    generation_tasks: IndexMap<IVec3, Task<GenerationResult>>,
     mesh_tasks: IndexMap<IVec3, Task<Option<Mesh>>>,
     chunks: IndexMap<IVec3, Chunk>,
+    chunks_to_save: HashMap<IVec3, ChunkData>,
     registry: Registry,
 }
 
@@ -91,6 +95,7 @@ impl World {
         };
 
         chunk.data.set_block(local_pos, block);
+        self.chunks_to_save.insert(chunk_pos, chunk.data.clone());
 
         self.force_remesh(chunk_pos);
 
@@ -175,15 +180,23 @@ pub struct ChunkData {
 
 impl Default for ChunkData {
     fn default() -> Self {
-        Self {
-            blocks: Arc::new(vec![None; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]),
-        }
+        Self::from_data(vec![None; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE])
     }
 }
 
 impl ChunkData {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn from_data(data: Vec<Option<Block>>) -> Self {
+        Self {
+            blocks: Arc::new(data),
+        }
+    }
+
+    pub fn clone_data(&self) -> Vec<Option<Block>> {
+        self.blocks.as_ref().clone()
     }
 
     pub fn get_block(&self, local_pos: USizeVec3) -> Option<Block> {
@@ -350,9 +363,11 @@ fn load_near_chunks(commands: &mut Commands, world: &mut World, material: Handle
             break;
         }
 
+        let region_manager = world.region_manager.clone();
         let generator = world.generator.clone();
 
-        let task = task_pool.spawn(async move { generator.generate_chunk(chunk_pos) });
+        let task =
+            task_pool.spawn(async move { generate_chunk(&region_manager, &generator, chunk_pos) });
 
         world.generation_tasks.insert(chunk_pos, task);
     }
@@ -373,7 +388,7 @@ fn load_near_chunks(commands: &mut Commands, world: &mut World, material: Handle
             None => true,
         });
 
-    for (chunk_pos, data) in results {
+    for (chunk_pos, result) in results {
         // Force remesh of neighbors, since their mesh will depend on this chunk
         for neighbor_pos in get_neighbors(chunk_pos) {
             world.force_remesh(neighbor_pos);
@@ -393,10 +408,16 @@ fn load_near_chunks(commands: &mut Commands, world: &mut World, material: Handle
             .id();
 
         // Insert the data and queue it for meshing
+        if result.needs_saving {
+            world
+                .chunks_to_save
+                .insert(chunk_pos, result.chunk_data.clone());
+        }
+
         world.chunks.insert(
             chunk_pos,
             Chunk {
-                data,
+                data: result.chunk_data,
                 mesh_status: MeshStatus::Queued,
                 entity,
             },
@@ -536,4 +557,45 @@ fn debug_ui(mut contexts: EguiContexts, mut world: ResMut<World>) -> Result {
         ui.add(Slider::new(&mut world.generation_radius, 1..=32).text("Generation Radius"));
     });
     Ok(())
+}
+
+struct GenerationResult {
+    chunk_data: ChunkData,
+    needs_saving: bool,
+}
+
+fn generate_chunk(
+    region_manager: &RegionManager,
+    world_generator: &WorldGenerator,
+    chunk_pos: IVec3,
+) -> GenerationResult {
+    if let Some(chunk_data) = region_manager.load_chunk(chunk_pos) {
+        return GenerationResult {
+            chunk_data,
+            needs_saving: false,
+        };
+    }
+
+    let chunk_data = world_generator.generate_chunk(chunk_pos);
+
+    GenerationResult {
+        chunk_data,
+        needs_saving: true,
+    }
+}
+
+fn save_chunks(mut world: ResMut<World>) {
+    if world.chunks_to_save.is_empty() {
+        return;
+    }
+
+    let task_pool = AsyncComputeTaskPool::get();
+    let region_manager = world.region_manager.clone();
+    let chunks = mem::take(&mut world.chunks_to_save);
+
+    task_pool
+        .spawn(async move {
+            region_manager.save_chunks(&chunks);
+        })
+        .detach();
 }

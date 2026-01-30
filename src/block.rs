@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use image::{DynamicImage, GenericImageView};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
+use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::{Aabb, Material, MaterialKind, Registry, TextureArrayBuilder};
@@ -16,7 +18,7 @@ pub enum BlockFace {
     Back,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Block {
     pub kind: BlockKind,
     pub data: u64,
@@ -28,7 +30,9 @@ impl Block {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, Display, Serialize_repr, Deserialize_repr,
+)]
 #[repr(u16)]
 pub enum BlockKind {
     #[strum(to_string = "Soil")]
