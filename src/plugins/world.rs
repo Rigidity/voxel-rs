@@ -1,4 +1,11 @@
-use std::{cmp::Reverse, collections::HashMap, mem, path::PathBuf, sync::Arc};
+use std::{
+    cmp::Reverse,
+    collections::HashMap,
+    mem,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use bevy::{
     math::USizeVec3,
@@ -34,6 +41,8 @@ impl Plugin for WorldPlugin {
                 chunks: IndexMap::new(),
                 chunks_to_save: HashMap::new(),
                 registry: Registry::new(),
+                last_save_time: Instant::now(),
+                save_task: None,
             })
             .add_systems(Startup, setup_registry)
             .add_systems(Update, (update_world, save_chunks).chain_ignore_deferred())
@@ -57,6 +66,8 @@ pub struct World {
     mesh_tasks: IndexMap<IVec3, Task<Option<Mesh>>>,
     chunks: IndexMap<IVec3, Chunk>,
     chunks_to_save: HashMap<IVec3, ChunkData>,
+    save_task: Option<Task<()>>,
+    last_save_time: Instant,
     registry: Registry,
 }
 
@@ -585,7 +596,13 @@ fn generate_chunk(
 }
 
 fn save_chunks(mut world: ResMut<World>) {
-    if world.chunks_to_save.is_empty() {
+    if world.chunks_to_save.is_empty() || world.last_save_time.elapsed() < Duration::from_secs(3) {
+        return;
+    }
+
+    if let Some(task) = world.save_task.as_mut()
+        && check_ready(task).is_none()
+    {
         return;
     }
 
@@ -593,9 +610,9 @@ fn save_chunks(mut world: ResMut<World>) {
     let region_manager = world.region_manager.clone();
     let chunks = mem::take(&mut world.chunks_to_save);
 
-    task_pool
-        .spawn(async move {
-            region_manager.save_chunks(&chunks);
-        })
-        .detach();
+    world.save_task = Some(task_pool.spawn(async move {
+        region_manager.save_chunks(&chunks);
+    }));
+
+    world.last_save_time = Instant::now();
 }
