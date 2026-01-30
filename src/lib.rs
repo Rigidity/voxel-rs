@@ -6,6 +6,7 @@ mod material;
 mod plugins;
 mod region;
 mod registry;
+mod relevant_chunks;
 mod texture_array_builder;
 mod world_generator;
 
@@ -17,5 +18,6 @@ pub use material::*;
 pub use plugins::*;
 pub use region::*;
 pub use registry::*;
+pub use relevant_chunks::*;
 pub use texture_array_builder::*;
 pub use world_generator::*;

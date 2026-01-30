@@ -22,7 +22,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     Block, BlockKind, CHUNK_SIZE, ChunkData, ChunkMaterial, Player, RegionManager, Registry,
-    TextureArrayBuilder, WorldGenerator, generate_mesh,
+    RelevantChunks, TextureArrayBuilder, WorldGenerator, generate_mesh,
 };
 
 pub struct WorldPlugin;
@@ -88,6 +88,10 @@ impl World {
         }
 
         true
+    }
+
+    pub fn get_chunk_data(&self, chunk_pos: IVec3) -> Option<ChunkData> {
+        self.chunks.get(&chunk_pos).map(|chunk| chunk.data.clone())
     }
 
     pub fn get_block(&self, world_pos: IVec3) -> Option<Block> {
@@ -180,37 +184,6 @@ enum MeshStatus {
 
     /// The chunk should be remeshed first.
     Urgent,
-}
-
-#[derive(Debug, Clone)]
-pub struct RelevantChunks {
-    chunks: HashMap<IVec3, ChunkData>,
-}
-
-impl RelevantChunks {
-    pub fn from_world(world: &World, center_pos: IVec3) -> Self {
-        let mut chunks = HashMap::new();
-
-        for x in -1..=1 {
-            for y in -1..=1 {
-                for z in -1..=1 {
-                    let chunk_pos = center_pos + IVec3::new(x, y, z);
-                    if let Some(chunk) = world.chunks.get(&chunk_pos) {
-                        chunks.insert(chunk_pos, chunk.data.clone());
-                    }
-                }
-            }
-        }
-
-        Self { chunks }
-    }
-
-    pub fn get_block(&self, world_pos: IVec3) -> Option<Block> {
-        let chunk_pos = World::chunk_pos(world_pos);
-        let local_pos = World::local_pos(world_pos);
-        let chunk = self.chunks.get(&chunk_pos)?;
-        chunk.get_block(local_pos)
-    }
 }
 
 fn setup_registry(
