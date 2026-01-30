@@ -493,9 +493,11 @@ fn get_neighbors(chunk_pos: IVec3) -> Vec<IVec3> {
 }
 
 fn debug_ui(mut contexts: EguiContexts, mut world: ResMut<World>) -> Result {
-    egui::Window::new("Settings").show(contexts.ctx_mut()?, |ui| {
-        ui.add(Slider::new(&mut world.generation_radius, 1..=32).text("Generation Radius"));
-    });
+    egui::Window::new("Settings")
+        .anchor(egui::Align2::RIGHT_TOP, egui::Vec2::new(-10.0, 10.0))
+        .show(contexts.ctx_mut()?, |ui| {
+            ui.add(Slider::new(&mut world.generation_radius, 1..=32).text("Generation Radius"));
+        });
     Ok(())
 }
 
