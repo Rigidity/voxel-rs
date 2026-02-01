@@ -10,7 +10,6 @@ use std::{
 use bevy::{
     math::USizeVec3,
     prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
     tasks::{AsyncComputeTaskPool, Task, futures::check_ready},
 };
 use bevy_egui::{
@@ -18,19 +17,17 @@ use bevy_egui::{
     egui::{self, Slider},
 };
 use indexmap::IndexMap;
-use strum::IntoEnumIterator;
 
 use crate::{
-    Block, BlockKind, CHUNK_SIZE, ChunkData, ChunkMaterial, Player, RegionManager, Registry,
-    RelevantChunks, TextureArrayBuilder, WorldGenerator, generate_mesh,
+    Block, BlockTextureArray, CHUNK_SIZE, ChunkData, ChunkMaterial, Player, RegionManager,
+    Registry, RelevantChunks, SharedRegistry, WorldGenerator, generate_mesh,
 };
 
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(MaterialPlugin::<ChunkMaterial>::default())
-            .add_plugins(EguiPlugin::default())
+        app.add_plugins(EguiPlugin::default())
             .insert_resource(World {
                 center_pos: IVec3::ZERO,
                 region_manager: Arc::new(RegionManager::new(PathBuf::from("regions"))),
@@ -40,20 +37,12 @@ impl Plugin for WorldPlugin {
                 mesh_tasks: IndexMap::new(),
                 chunks: IndexMap::new(),
                 chunks_to_save: HashMap::new(),
-                registry: Registry::new(),
                 last_save_time: Instant::now(),
                 save_task: None,
             })
-            .add_systems(Startup, setup_registry)
             .add_systems(Update, (update_world, save_chunks).chain_ignore_deferred())
             .add_systems(EguiPrimaryContextPass, debug_ui);
     }
-}
-
-#[derive(Resource)]
-pub struct BlockTextureArray {
-    pub handle: Handle<Image>,
-    pub material: Handle<ChunkMaterial>,
 }
 
 #[derive(Resource)]
@@ -68,7 +57,6 @@ pub struct World {
     chunks_to_save: HashMap<IVec3, ChunkData>,
     save_task: Option<Task<()>>,
     last_save_time: Instant,
-    registry: Registry,
 }
 
 impl World {
@@ -186,63 +174,13 @@ enum MeshStatus {
     Urgent,
 }
 
-fn setup_registry(
-    mut commands: Commands,
-    mut world: ResMut<World>,
-    mut images: ResMut<Assets<Image>>,
-    mut materials: ResMut<Assets<ChunkMaterial>>,
-) {
-    let mut builder = TextureArrayBuilder::new(16, 16);
-
-    let atlas = image::load_from_memory(include_bytes!("../../textures/textures.png")).unwrap();
-
-    for block_kind in BlockKind::iter() {
-        block_kind.register_textures(&mut builder, &mut world.registry, &atlas);
-    }
-
-    let textures = builder.into_textures();
-
-    log::info!("Generating an array of {} textures", textures.len());
-
-    // Convert Vec<DynamicImage> into a texture array
-    let texture_size = 16u32;
-    let array_layers = textures.len() as u32;
-
-    let mut texture_array_data = Vec::new();
-
-    for texture in textures {
-        let rgba = texture.to_rgba8();
-        texture_array_data.extend_from_slice(&rgba);
-    }
-
-    let texture_array = Image::new(
-        Extent3d {
-            width: texture_size,
-            height: texture_size,
-            depth_or_array_layers: array_layers,
-        },
-        TextureDimension::D2,
-        texture_array_data,
-        TextureFormat::Rgba8UnormSrgb,
-        Default::default(),
-    );
-
-    let handle = images.add(texture_array);
-
-    let material = materials.add(ChunkMaterial {
-        array_texture: handle.clone(),
-        ao_factor: 0.3,
-    });
-
-    commands.insert_resource(BlockTextureArray { handle, material });
-}
-
 fn update_world(
     mut commands: Commands,
     mut world: ResMut<World>,
     player: Query<&GlobalTransform, With<Player>>,
     mut meshes: ResMut<Assets<Mesh>>,
     texture_array: Res<BlockTextureArray>,
+    shared_registry: Res<SharedRegistry>,
 ) {
     let player = player.single().unwrap();
 
@@ -250,7 +188,12 @@ fn update_world(
 
     unload_far_chunks(&mut commands, &mut world);
     load_near_chunks(&mut commands, &mut world, texture_array.material.clone());
-    regenerate_meshes(&mut commands, &mut world, &mut meshes);
+    regenerate_meshes(
+        &mut commands,
+        &mut world,
+        &mut meshes,
+        shared_registry.0.clone(),
+    );
 }
 
 fn unload_far_chunks(commands: &mut Commands, world: &mut World) {
@@ -372,7 +315,12 @@ fn load_near_chunks(commands: &mut Commands, world: &mut World, material: Handle
     }
 }
 
-fn regenerate_meshes(commands: &mut Commands, world: &mut World, meshes: &mut Assets<Mesh>) {
+fn regenerate_meshes(
+    commands: &mut Commands,
+    world: &mut World,
+    meshes: &mut Assets<Mesh>,
+    registry: Arc<Registry>,
+) {
     let task_pool = AsyncComputeTaskPool::get();
 
     // We need to generate meshes a single time for queued chunks
@@ -427,8 +375,7 @@ fn regenerate_meshes(commands: &mut Commands, world: &mut World, meshes: &mut As
 
         // Obtain a reference to neighboring chunks, since we need to generate the mesh for this chunk based on them
         let relevant_chunks = RelevantChunks::from_world(world, chunk_pos);
-
-        let registry = world.registry.clone();
+        let registry = registry.clone();
 
         let task =
             task_pool.spawn(async move { generate_mesh(chunk_pos, &relevant_chunks, &registry) });
