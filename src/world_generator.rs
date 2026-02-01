@@ -4,9 +4,7 @@ use bevy::{
 };
 use noise::{NoiseFn, Perlin};
 
-use crate::{
-    Block, BlockData, BlockKind, CHUNK_SIZE, ChunkData, Material, RockData, RockType, SoilData,
-};
+use crate::{Block, CHUNK_SIZE, ChunkData, Material, PackedData, Registry};
 
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
@@ -26,7 +24,10 @@ impl WorldGenerator {
         Self::default()
     }
 
-    pub fn generate_chunk(&self, chunk_pos: IVec3) -> ChunkData {
+    pub fn generate_chunk(&self, chunk_pos: IVec3, registry: &Registry) -> ChunkData {
+        let rock = registry.block_id("rock");
+        let soil = registry.block_id("soil");
+
         let mut data = ChunkData::new();
 
         for x in 0..CHUNK_SIZE {
@@ -61,30 +62,22 @@ impl WorldGenerator {
                         data.set_block(
                             local_pos,
                             Some(Block::new(
-                                BlockKind::Rock,
-                                RockData {
-                                    rock_type: RockType::Rock,
-                                    material: Material::Shale,
-                                }
-                                .encode(),
+                                rock,
+                                PackedData::builder().with_material(Material::Shale).build(),
                             )),
                         );
                     } else if global_pos.y < height {
-                        data.set_block(
-                            local_pos,
-                            Some(Block::new(
-                                BlockKind::Soil,
-                                SoilData {
-                                    material: Material::Loam,
-                                    grass_material: if global_pos.y == height.ceil() - 1.0 {
-                                        Some(Material::LushGrass)
-                                    } else {
-                                        None
-                                    },
-                                }
-                                .encode(),
-                            )),
-                        );
+                        let mut block_data = PackedData::builder().with_material(Material::Loam);
+
+                        if global_pos.y == height.ceil() - 1.0 {
+                            block_data = block_data
+                                .with_bool(true)
+                                .with_material(Material::LushGrass);
+                        } else {
+                            block_data = block_data.with_bool(false);
+                        }
+
+                        data.set_block(local_pos, Some(Block::new(soil, block_data.build())));
                     } else {
                         data.set_block(local_pos, None);
                     }

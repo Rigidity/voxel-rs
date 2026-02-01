@@ -187,7 +187,12 @@ fn update_world(
     world.update_center_pos(player.translation());
 
     unload_far_chunks(&mut commands, &mut world);
-    load_near_chunks(&mut commands, &mut world, texture_array.material.clone());
+    load_near_chunks(
+        &mut commands,
+        &mut world,
+        texture_array.material.clone(),
+        &shared_registry.0,
+    );
     regenerate_meshes(
         &mut commands,
         &mut world,
@@ -213,7 +218,12 @@ fn unload_far_chunks(commands: &mut Commands, world: &mut World) {
     }
 }
 
-fn load_near_chunks(commands: &mut Commands, world: &mut World, material: Handle<ChunkMaterial>) {
+fn load_near_chunks(
+    commands: &mut Commands,
+    world: &mut World,
+    material: Handle<ChunkMaterial>,
+    registry: &Arc<Registry>,
+) {
     let task_pool = AsyncComputeTaskPool::get();
 
     let mut chunks_to_generate = Vec::new();
@@ -248,9 +258,11 @@ fn load_near_chunks(commands: &mut Commands, world: &mut World, material: Handle
 
         let region_manager = world.region_manager.clone();
         let generator = world.generator.clone();
+        let registry = registry.clone();
 
-        let task =
-            task_pool.spawn(async move { generate_chunk(&region_manager, &generator, chunk_pos) });
+        let task = task_pool.spawn(async move {
+            generate_chunk(&region_manager, &generator, chunk_pos, &registry)
+        });
 
         world.generation_tasks.insert(chunk_pos, task);
     }
@@ -457,6 +469,7 @@ fn generate_chunk(
     region_manager: &RegionManager,
     world_generator: &WorldGenerator,
     chunk_pos: IVec3,
+    registry: &Registry,
 ) -> GenerationResult {
     if let Some(chunk_data) = region_manager.load_chunk(chunk_pos) {
         return GenerationResult {
@@ -465,7 +478,7 @@ fn generate_chunk(
         };
     }
 
-    let chunk_data = world_generator.generate_chunk(chunk_pos);
+    let chunk_data = world_generator.generate_chunk(chunk_pos, registry);
 
     GenerationResult {
         chunk_data,

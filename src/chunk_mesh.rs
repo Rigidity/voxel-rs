@@ -38,10 +38,7 @@ pub fn generate_mesh(
 
                 // Front face (+Z)
                 if front {
-                    let texture_index =
-                        block
-                            .kind
-                            .texture_index(block.data, registry, BlockFace::Front);
+                    let texture_index = registry.texture_index(block, BlockFace::Front);
 
                     let index = mesh.index();
 
@@ -102,10 +99,7 @@ pub fn generate_mesh(
 
                 // Back face (-Z)
                 if back {
-                    let texture_index =
-                        block
-                            .kind
-                            .texture_index(block.data, registry, BlockFace::Back);
+                    let texture_index = registry.texture_index(block, BlockFace::Back);
 
                     let index = mesh.index();
 
@@ -166,10 +160,7 @@ pub fn generate_mesh(
 
                 // Left face (-X)
                 if left {
-                    let texture_index =
-                        block
-                            .kind
-                            .texture_index(block.data, registry, BlockFace::Left);
+                    let texture_index = registry.texture_index(block, BlockFace::Left);
 
                     let index = mesh.index();
 
@@ -230,10 +221,7 @@ pub fn generate_mesh(
 
                 // Right face (+X)
                 if right {
-                    let texture_index =
-                        block
-                            .kind
-                            .texture_index(block.data, registry, BlockFace::Right);
+                    let texture_index = registry.texture_index(block, BlockFace::Right);
 
                     let index = mesh.index();
 
@@ -294,10 +282,7 @@ pub fn generate_mesh(
 
                 // Top face (+Y)
                 if top {
-                    let texture_index =
-                        block
-                            .kind
-                            .texture_index(block.data, registry, BlockFace::Top);
+                    let texture_index = registry.texture_index(block, BlockFace::Top);
 
                     let index = mesh.index();
 
@@ -358,10 +343,7 @@ pub fn generate_mesh(
 
                 // Bottom face (-Y)
                 if bottom {
-                    let texture_index =
-                        block
-                            .kind
-                            .texture_index(block.data, registry, BlockFace::Bottom);
+                    let texture_index = registry.texture_index(block, BlockFace::Bottom);
 
                     let index = mesh.index();
 

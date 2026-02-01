@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::Material;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[repr(transparent)]
+#[serde(transparent)]
 pub struct PackedData(u64);
 
 impl PackedData {

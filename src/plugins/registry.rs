@@ -4,9 +4,10 @@ use bevy::{
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
-use strum::IntoEnumIterator;
+use image::DynamicImage;
+use serde::{Deserialize, Serialize};
 
-use crate::{BlockKind, ChunkMaterial, TextureArrayBuilder};
+use crate::{Block, BlockFace, BlockType, ChunkMaterial, Rock, Soil, Wood};
 
 pub struct RegistryPlugin;
 
@@ -23,27 +24,23 @@ pub struct BlockTextureArray {
     pub material: Handle<ChunkMaterial>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BlockTextureKey {
-    pub block_kind: BlockKind,
-    pub texture_data: u64,
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BlockId(u16);
 
-impl BlockTextureKey {
-    pub fn new(block_kind: BlockKind, texture_data: u64) -> Self {
-        Self {
-            block_kind,
-            texture_data,
-        }
-    }
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct MaterialId(u16);
 
 #[derive(Resource)]
 pub struct SharedRegistry(pub Arc<Registry>);
 
 #[derive(Default)]
 pub struct Registry {
-    block_texture_indices: HashMap<BlockTextureKey, u32>,
+    block_ids: HashMap<String, BlockId>,
+    block_types: HashMap<BlockId, Box<dyn BlockType>>,
+    block_texture_indices: HashMap<Block, u32>,
+    texture_array: Vec<DynamicImage>,
 }
 
 impl Registry {
@@ -51,20 +48,34 @@ impl Registry {
         Self::default()
     }
 
-    pub fn register_texture(
-        &mut self,
-        block_kind: BlockKind,
-        texture_data: u64,
-        texture_index: u32,
-    ) {
-        self.block_texture_indices.insert(
-            BlockTextureKey::new(block_kind, texture_data),
-            texture_index,
-        );
+    pub fn register_block(&mut self, block: impl BlockType) {
+        let block_id = BlockId(self.block_ids.len() as u16);
+        self.block_ids.insert(block.unique_name(), block_id);
+        block.register(self);
+        self.block_types.insert(block_id, Box::new(block));
     }
 
-    pub fn texture_index(&self, block_kind: BlockKind, texture_data: u64) -> u32 {
-        self.block_texture_indices[&BlockTextureKey::new(block_kind, texture_data)]
+    pub fn block_id(&self, name: &str) -> BlockId {
+        self.block_ids[name]
+    }
+
+    pub fn block_type(&self, id: BlockId) -> &dyn BlockType {
+        &*self.block_types[&id]
+    }
+
+    pub fn add_image(&mut self, image: DynamicImage) -> u32 {
+        let texture_index = self.texture_array.len() as u32;
+        self.texture_array.push(image);
+        texture_index
+    }
+
+    pub fn register_texture(&mut self, block: Block, texture_index: u32) {
+        self.block_texture_indices.insert(block, texture_index);
+    }
+
+    pub fn texture_index(&self, block: Block, face: BlockFace) -> u32 {
+        let data = self.block_type(block.id).face_data(face, block.data);
+        self.block_texture_indices[&Block::new(block.id, data)]
     }
 }
 
@@ -74,25 +85,23 @@ fn setup_registry(
     mut materials: ResMut<Assets<ChunkMaterial>>,
 ) {
     let mut registry = Registry::new();
-    let mut builder = TextureArrayBuilder::new(16, 16);
 
-    let atlas = image::load_from_memory(include_bytes!("../../textures/textures.png")).unwrap();
+    registry.register_block(Rock);
+    registry.register_block(Soil);
+    registry.register_block(Wood);
 
-    for block_kind in BlockKind::iter() {
-        block_kind.register_textures(&mut builder, &mut registry, &atlas);
-    }
-
-    let textures = builder.into_textures();
-
-    log::info!("Generating an array of {} textures", textures.len());
+    log::info!(
+        "Generating an array of {} textures",
+        registry.texture_array.len()
+    );
 
     // Convert Vec<DynamicImage> into a texture array
     let texture_size = 16u32;
-    let array_layers = textures.len() as u32;
+    let array_layers = registry.texture_array.len() as u32;
 
     let mut texture_array_data = Vec::new();
 
-    for texture in textures {
+    for texture in &registry.texture_array {
         let rgba = texture.to_rgba8();
         texture_array_data.extend_from_slice(&rgba);
     }

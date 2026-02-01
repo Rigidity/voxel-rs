@@ -4,9 +4,7 @@ use bevy::{
     window::{CursorGrabMode, CursorOptions},
 };
 
-use crate::{
-    Aabb, Block, BlockData, BlockKind, CollisionNormals, Material, Velocity, WoodLogData, World,
-};
+use crate::{Aabb, Block, CollisionNormals, Material, PackedData, SharedRegistry, Velocity, World};
 
 pub struct PlayerPlugin;
 
@@ -60,6 +58,7 @@ fn setup_player(mut commands: Commands) {
 fn update_player(
     time: Res<Time>,
     mut world: ResMut<World>,
+    shared_registry: Res<SharedRegistry>,
     mut player: Query<(&mut Player, &mut Velocity, &CollisionNormals)>,
     mut camera: Query<(&mut Transform, &GlobalTransform), (With<PlayerCamera>, Without<Player>)>,
     input: Res<ButtonInput<KeyCode>>,
@@ -212,14 +211,13 @@ fn update_player(
             && let Some(result) =
                 voxel_raycast(camera_global.translation(), forward_with_pitch, 5.0, &world)
         {
+            let wood = shared_registry.0.block_id("wood");
+
             world.set_block(
                 result.previous_position,
                 Some(Block::new(
-                    BlockKind::WoodLog,
-                    WoodLogData {
-                        wood_material: Material::Oak,
-                    }
-                    .encode(),
+                    wood,
+                    PackedData::builder().with_material(Material::Oak).build(),
                 )),
             );
         }

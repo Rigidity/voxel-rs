@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::World;
+use crate::{Registry, SharedRegistry, World};
 
 pub struct PhysicsPlugin;
 
@@ -62,6 +62,7 @@ pub struct Velocity(pub Vec3);
 fn move_entities(
     time: Res<Time>,
     world: Res<World>,
+    registry: Res<SharedRegistry>,
     mut query: Query<(
         &mut Velocity,
         &mut Transform,
@@ -80,6 +81,7 @@ fn move_entities(
                 &mut transform.translation,
                 delta,
                 &world,
+                &registry.0,
                 &mut collision_normals,
             );
         } else {
@@ -94,12 +96,13 @@ fn move_with_collision(
     position: &mut Vec3,
     mut delta: Vec3,
     world: &World,
+    registry: &Registry,
     collision_normals: &mut CollisionNormals,
 ) {
     collision_normals.0.clear();
 
     for _ in 0..3 {
-        let collision = check_collision(Aabb::new(*position, size), delta, world)
+        let collision = check_collision(Aabb::new(*position, size), delta, world, registry)
             .into_iter()
             .min_by(|a, b| a.time.total_cmp(&b.time));
 
@@ -123,7 +126,12 @@ struct Collision {
     normal: Vec3,
 }
 
-fn check_collision(source: Aabb, delta: Vec3, world: &World) -> Vec<Collision> {
+fn check_collision(
+    source: Aabb,
+    delta: Vec3,
+    world: &World,
+    registry: &Registry,
+) -> Vec<Collision> {
     let mut collisions = Vec::new();
 
     let target = source.translate(delta);
@@ -135,13 +143,16 @@ fn check_collision(source: Aabb, delta: Vec3, world: &World) -> Vec<Collision> {
             for z in min.z as i32..max.z as i32 {
                 let block_pos = IVec3::new(x, y, z);
                 if let Some(block) = world.get_block(block_pos)
-                    && let Some(block_aabb) = block.kind.get_aabb(block.data).map(|aabb| {
-                        aabb.translate(Vec3::new(
-                            block_pos.x as f32,
-                            block_pos.y as f32,
-                            block_pos.z as f32,
-                        ))
-                    })
+                    && let Some(block_aabb) = registry
+                        .block_type(block.id)
+                        .get_aabb(block.data)
+                        .map(|aabb| {
+                            aabb.translate(Vec3::new(
+                                block_pos.x as f32,
+                                block_pos.y as f32,
+                                block_pos.z as f32,
+                            ))
+                        })
                 {
                     collisions.extend(swept_aabb(delta, source, block_aabb))
                 }
