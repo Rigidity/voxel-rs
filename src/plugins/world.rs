@@ -97,7 +97,7 @@ impl World {
             return;
         };
 
-        chunk.data.set_block(local_pos, block);
+        Arc::make_mut(&mut chunk.data).set_block(local_pos, block);
         self.chunks_to_save.insert(chunk_pos, chunk.data.clone());
 
         self.force_remesh(chunk_pos);

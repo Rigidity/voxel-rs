@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs,
     path::PathBuf,
+    sync::Arc,
 };
 
 use bevy::math::IVec3;
@@ -9,7 +10,7 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
-use crate::{Block, ChunkData};
+use crate::{Block, ChunkData, ChunkDataInner};
 
 const REGION_SIZE: usize = 16;
 
@@ -108,7 +109,7 @@ impl CompressedChunk {
         let mut current_block = None;
         let mut length = 0;
 
-        for block in data.clone_data() {
+        for block in data.iter() {
             if let Some(current_block) = &mut current_block {
                 if *current_block == block {
                     length += 1;
@@ -154,7 +155,7 @@ impl CompressedChunk {
             i += 2;
         }
 
-        ChunkData::from_data(data)
+        Arc::new(ChunkDataInner::from_data(data))
     }
 
     fn get_block(&self, palette_index: u16) -> Option<Block> {

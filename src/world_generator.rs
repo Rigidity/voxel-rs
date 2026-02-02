@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use bevy::{
     math::{DVec3, USizeVec3},
     prelude::*,
 };
 use noise::{NoiseFn, Perlin};
 
-use crate::{Block, CHUNK_SIZE, ChunkData, Material, PackedData, Registry};
+use crate::{Block, CHUNK_SIZE, ChunkData, ChunkDataInner, Material, PackedData, Registry};
 
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
@@ -28,7 +30,7 @@ impl WorldGenerator {
         let rock = registry.block_id("rock");
         let soil = registry.block_id("soil");
 
-        let mut data = ChunkData::new();
+        let mut data = ChunkDataInner::new();
 
         for x in 0..CHUNK_SIZE {
             for y in 0..CHUNK_SIZE {
@@ -85,6 +87,6 @@ impl WorldGenerator {
             }
         }
 
-        data
+        Arc::new(data)
     }
 }
