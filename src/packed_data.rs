@@ -1,7 +1,6 @@
-use num_traits::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
 
-use crate::Material;
+use crate::MaterialId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -61,8 +60,8 @@ impl PackedDataEncoder {
         self.with_u8(if value { 1 } else { 0 })
     }
 
-    pub fn with_material(self, material: Material) -> Self {
-        self.with_u16(material.to_u16().unwrap())
+    pub fn with_material(self, material: MaterialId) -> Self {
+        self.with_u16(material.0)
     }
 
     pub fn build(self) -> PackedData {
@@ -117,8 +116,8 @@ impl PackedDataDecoder {
         value == 1
     }
 
-    pub fn take_material(&mut self) -> Material {
-        Material::from_u16(self.take_u16()).unwrap()
+    pub fn take_material(&mut self) -> MaterialId {
+        MaterialId(self.take_u16())
     }
 }
 

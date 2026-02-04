@@ -5,9 +5,13 @@ use bevy::{
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
 use image::DynamicImage;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use crate::{Block, BlockFace, BlockType, ChunkMaterial, Rock, Soil, Wood};
+use crate::{
+    Block, BlockFace, BlockType, ChunkMaterial, Loam, LushGrass, Material, Oak, Rock, Shale, Soil,
+    Wood,
+};
 
 pub struct RegistryPlugin;
 
@@ -26,17 +30,19 @@ pub struct BlockTextureArray {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct BlockId(u16);
+pub struct BlockId(pub u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct MaterialId(u16);
+pub struct MaterialId(pub u16);
 
 #[derive(Resource)]
 pub struct SharedRegistry(pub Arc<Registry>);
 
 #[derive(Default)]
 pub struct Registry {
+    material_ids: IndexMap<String, MaterialId>,
+    materials: HashMap<MaterialId, Box<dyn Material>>,
     block_ids: HashMap<String, BlockId>,
     block_types: HashMap<BlockId, Box<dyn BlockType>>,
     block_texture_indices: HashMap<Block, u32>,
@@ -46,6 +52,25 @@ pub struct Registry {
 impl Registry {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn material_id(&self, name: &str) -> MaterialId {
+        self.material_ids[name]
+    }
+
+    pub fn material(&self, id: MaterialId) -> &dyn Material {
+        &*self.materials[&id]
+    }
+
+    pub fn materials(&self) -> Vec<MaterialId> {
+        self.material_ids.values().copied().collect()
+    }
+
+    pub fn register_material(&mut self, material: impl Material) {
+        let material_id = MaterialId(self.materials.len() as u16);
+        self.material_ids
+            .insert(material.unique_name(), material_id);
+        self.materials.insert(material_id, Box::new(material));
     }
 
     pub fn register_block(&mut self, block: impl BlockType) {
@@ -85,6 +110,11 @@ fn setup_registry(
     mut materials: ResMut<Assets<ChunkMaterial>>,
 ) {
     let mut registry = Registry::new();
+
+    registry.register_material(Loam);
+    registry.register_material(LushGrass);
+    registry.register_material(Oak);
+    registry.register_material(Shale);
 
     registry.register_block(Rock);
     registry.register_block(Soil);

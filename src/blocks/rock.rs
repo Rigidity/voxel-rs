@@ -1,6 +1,4 @@
-use strum::IntoEnumIterator;
-
-use crate::{Block, BlockType, Material, MaterialKind, PackedData, Registry};
+use crate::{Block, BlockType, PackedData, Registry, color_image};
 
 pub struct Rock;
 
@@ -11,24 +9,23 @@ impl BlockType for Rock {
 
     fn register(&self, registry: &mut Registry) {
         let block_id = registry.block_id(&self.unique_name());
-        let image = image::load_from_memory(include_bytes!("../../textures/rock.png")).unwrap();
+        let image =
+            image::load_from_memory(include_bytes!("../../textures/blocks/rock.png")).unwrap();
 
-        for material in Material::iter() {
-            if material.kind() == MaterialKind::Rock {
-                let mut image = image.clone().into_rgba8();
+        for id in registry.materials() {
+            let material = registry.material(id);
 
-                material.color_image(&mut image);
-
-                let texture_index = registry.add_image(image.into());
-
-                registry.register_texture(
-                    Block::new(
-                        block_id,
-                        PackedData::builder().with_material(material).build(),
-                    ),
-                    texture_index,
-                );
+            if !material.tags().contains(&"rock".to_string()) {
+                continue;
             }
+
+            let image = color_image(&image, material.get_palette());
+            let texture_index = registry.add_image(image);
+
+            registry.register_texture(
+                Block::new(block_id, PackedData::builder().with_material(id).build()),
+                texture_index,
+            );
         }
     }
 }

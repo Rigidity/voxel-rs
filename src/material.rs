@@ -1,117 +1,54 @@
-use image::{ImageBuffer, Rgba};
-use num_derive::{FromPrimitive, ToPrimitive};
-use strum::{Display, EnumIter};
+use image::{DynamicImage, GenericImageView, Rgba};
 
-macro_rules! color {
-    ( $( $color:tt )* ) => {
-        csscolorparser::parse(stringify!($( $color )*)).unwrap().to_rgba8()
-    };
+pub trait Material: 'static + Send + Sync {
+    fn unique_name(&self) -> String;
+
+    fn tags(&self) -> Vec<String>;
+
+    fn get_palette(&self) -> [Rgba<u8>; 4];
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-pub enum MaterialKind {
-    #[strum(to_string = "Rock")]
-    Rock,
+pub fn color_image(image: &DynamicImage, palette: [Rgba<u8>; 4]) -> DynamicImage {
+    let mut image = image.to_rgba8();
 
-    #[strum(to_string = "Soil")]
-    Soil,
+    let base_palette = base_palette_colors();
 
-    #[strum(to_string = "Grass")]
-    Grass,
+    for pixel in image.pixels_mut() {
+        let Some(index) = base_palette.iter().position(|p| p == pixel) else {
+            continue;
+        };
 
-    #[strum(to_string = "Wood")]
-    Wood,
+        *pixel = palette[index];
+    }
+
+    image.into()
 }
 
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Display, EnumIter, ToPrimitive, FromPrimitive,
-)]
-#[repr(u16)]
-pub enum Material {
-    #[strum(to_string = "Basalt")]
-    Shale,
+pub fn overlay_image(image: &DynamicImage, overlay: &DynamicImage) -> DynamicImage {
+    let mut image = image.to_rgba8();
 
-    #[strum(to_string = "Chalk")]
-    Chalk,
+    for x in 0..overlay.width() {
+        for y in 0..overlay.height() {
+            let pixel = overlay.get_pixel(x, y);
 
-    #[strum(to_string = "Loam")]
-    Loam,
-
-    #[strum(to_string = "Clay")]
-    Clay,
-
-    #[strum(to_string = "Lush Grass")]
-    LushGrass,
-
-    #[strum(to_string = "Oak")]
-    Oak,
-}
-
-impl Material {
-    pub fn kind(&self) -> MaterialKind {
-        match self {
-            Self::Shale => MaterialKind::Rock,
-            Self::Chalk => MaterialKind::Rock,
-            Self::Loam => MaterialKind::Soil,
-            Self::Clay => MaterialKind::Soil,
-            Self::LushGrass => MaterialKind::Grass,
-            Self::Oak => MaterialKind::Wood,
+            if pixel.0[3] > 0 {
+                image.put_pixel(x, y, pixel);
+            }
         }
     }
 
-    pub fn palette(&self) -> [Rgba<u8>; 4] {
-        match self {
-            Self::Shale => [
-                Rgba(color!( #949494 )),
-                Rgba(color!( #838383 )),
-                Rgba(color!( #737373 )),
-                Rgba(color!( #656565 )),
-            ],
-            Self::Chalk => [
-                Rgba(color!( #E5E5D8 )),
-                Rgba(color!( #D8D8CC )),
-                Rgba(color!( #CCC0C0 )),
-                Rgba(color!( #C0C0B5 )),
-            ],
-            Self::Loam => [
-                Rgba(color!(rgb(114, 89, 55))),
-                Rgba(color!(rgb(110, 84, 49))),
-                Rgba(color!(rgb(103, 79, 45))),
-                Rgba(color!(rgb(97, 72, 42))),
-            ],
-            Self::Clay => [
-                Rgba(color!( #A05E4C )),
-                Rgba(color!( #945645 )),
-                Rgba(color!( #884E3E )),
-                Rgba(color!( #7D4738 )),
-            ],
-            Self::LushGrass => [
-                Rgba(color!(rgb(48, 162, 54))),
-                Rgba(color!(rgb(45, 155, 51))),
-                Rgba(color!(rgb(43, 148, 48))),
-                Rgba(color!(rgb(40, 139, 44))),
-            ],
-            Self::Oak => [
-                Rgba(color!(rgb(130, 87, 65))),
-                Rgba(color!(rgb(122, 76, 51))),
-                Rgba(color!(rgb(110, 68, 43))),
-                Rgba(color!(rgb(100, 64, 41))),
-            ],
-        }
-    }
+    image.into()
+}
 
-    pub fn color_image(&self, image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) {
-        let palette = self.palette();
-        let base_palette = base_palette_colors();
-
-        for pixel in image.pixels_mut() {
-            let Some(index) = base_palette.iter().position(|p| p == pixel) else {
-                continue;
-            };
-
-            *pixel = palette[index];
-        }
-    }
+pub fn extract_palette(image: &DynamicImage) -> [Rgba<u8>; 4] {
+    image
+        .as_rgba8()
+        .unwrap()
+        .pixels()
+        .copied()
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap()
 }
 
 fn base_palette_colors() -> [Rgba<u8>; 4] {

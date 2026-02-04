@@ -1,7 +1,4 @@
-use image::{GenericImage, GenericImageView};
-use strum::IntoEnumIterator;
-
-use crate::{Block, BlockFace, BlockType, Material, MaterialKind, PackedData, Registry};
+use crate::{Block, BlockFace, BlockType, PackedData, Registry, color_image, overlay_image};
 
 pub struct Soil;
 
@@ -13,81 +10,77 @@ impl BlockType for Soil {
     fn register(&self, registry: &mut Registry) {
         let block_id = registry.block_id(&self.unique_name());
         let soil_image =
-            image::load_from_memory(include_bytes!("../../textures/soil.png")).unwrap();
+            image::load_from_memory(include_bytes!("../../textures/blocks/soil.png")).unwrap();
         let grass_side_image =
-            image::load_from_memory(include_bytes!("../../textures/grass.png")).unwrap();
+            image::load_from_memory(include_bytes!("../../textures/blocks/grass.png")).unwrap();
 
-        for grass_material in Material::iter() {
-            if grass_material.kind() == MaterialKind::Grass {
-                let mut image = soil_image.clone();
-                grass_material.color_image(image.as_mut_rgba8().unwrap());
+        for id in registry.materials() {
+            let material = registry.material(id);
 
+            if !material.tags().contains(&"grass".to_string()) {
+                continue;
+            }
+
+            let image = color_image(&soil_image, material.get_palette());
+            let texture_index = registry.add_image(image);
+
+            registry.register_texture(
+                Block::new(
+                    block_id,
+                    PackedData::builder()
+                        .with_bool(true)
+                        .with_material(id)
+                        .build(),
+                ),
+                texture_index,
+            );
+        }
+
+        for soil_id in registry.materials() {
+            let soil_material = registry.material(soil_id);
+
+            if !soil_material.tags().contains(&"soil".to_string()) {
+                continue;
+            }
+
+            let image = color_image(&soil_image, soil_material.get_palette());
+            let texture_index = registry.add_image(image.clone());
+
+            registry.register_texture(
+                Block::new(
+                    block_id,
+                    PackedData::builder()
+                        .with_bool(false)
+                        .with_material(soil_id)
+                        .with_bool(false)
+                        .build(),
+                ),
+                texture_index,
+            );
+
+            for grass_id in registry.materials() {
+                let grass_material = registry.material(grass_id);
+
+                if !grass_material.tags().contains(&"grass".to_string()) {
+                    continue;
+                }
+
+                let overlay = color_image(&grass_side_image, grass_material.get_palette());
+                let image = overlay_image(&image, &overlay);
                 let texture_index = registry.add_image(image);
 
                 registry.register_texture(
                     Block::new(
                         block_id,
                         PackedData::builder()
+                            .with_bool(false)
+                            .with_material(soil_id)
                             .with_bool(true)
-                            .with_material(grass_material)
+                            .with_material(grass_id)
                             .build(),
                     ),
                     texture_index,
                 );
-            }
-        }
-
-        for material in Material::iter() {
-            if material.kind() == MaterialKind::Soil {
-                let mut image = soil_image.clone();
-                material.color_image(image.as_mut_rgba8().unwrap());
-
-                let texture_index = registry.add_image(image.clone());
-
-                registry.register_texture(
-                    Block::new(
-                        block_id,
-                        PackedData::builder()
-                            .with_bool(false)
-                            .with_material(material)
-                            .with_bool(false)
-                            .build(),
-                    ),
-                    texture_index,
-                );
-
-                for grass_material in Material::iter() {
-                    if grass_material.kind() == MaterialKind::Grass {
-                        let mut overlay = grass_side_image.clone();
-                        grass_material.color_image(overlay.as_mut_rgba8().unwrap());
-
-                        let mut image = image.clone();
-
-                        for x in 0..overlay.width() {
-                            for y in 0..overlay.height() {
-                                let pixel = overlay.get_pixel(x, y);
-                                if pixel.0[3] > 0 {
-                                    image.put_pixel(x, y, pixel);
-                                }
-                            }
-                        }
-
-                        let texture_index = registry.add_image(image);
-
-                        registry.register_texture(
-                            Block::new(
-                                block_id,
-                                PackedData::builder()
-                                    .with_bool(false)
-                                    .with_material(material)
-                                    .with_bool(true)
-                                    .with_material(grass_material)
-                                    .build(),
-                            ),
-                            texture_index,
-                        );
-                    }
-                }
             }
         }
     }

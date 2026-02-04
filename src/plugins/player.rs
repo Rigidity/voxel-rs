@@ -4,7 +4,7 @@ use bevy::{
     window::{CursorGrabMode, CursorOptions},
 };
 
-use crate::{Aabb, Block, CollisionNormals, Material, PackedData, SharedRegistry, Velocity, World};
+use crate::{Aabb, Block, CollisionNormals, PackedData, SharedRegistry, Velocity, World};
 
 pub struct PlayerPlugin;
 
@@ -212,12 +212,13 @@ fn update_player(
                 voxel_raycast(camera_global.translation(), forward_with_pitch, 5.0, &world)
         {
             let wood = shared_registry.0.block_id("wood");
+            let oak = shared_registry.0.material_id("oak");
 
             world.set_block(
                 result.previous_position,
                 Some(Block::new(
                     wood,
-                    PackedData::builder().with_material(Material::Oak).build(),
+                    PackedData::builder().with_material(oak).build(),
                 )),
             );
         }

@@ -6,7 +6,7 @@ use bevy::{
 };
 use noise::{NoiseFn, Perlin};
 
-use crate::{Block, CHUNK_SIZE, ChunkData, ChunkDataInner, Material, PackedData, Registry};
+use crate::{Block, CHUNK_SIZE, ChunkData, ChunkDataInner, PackedData, Registry};
 
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
@@ -29,6 +29,9 @@ impl WorldGenerator {
     pub fn generate_chunk(&self, chunk_pos: IVec3, registry: &Registry) -> ChunkData {
         let rock = registry.block_id("rock");
         let soil = registry.block_id("soil");
+        let shale = registry.material_id("shale");
+        let loam = registry.material_id("loam");
+        let lush_grass = registry.material_id("lush_grass");
 
         let mut data = ChunkDataInner::new();
 
@@ -65,16 +68,14 @@ impl WorldGenerator {
                             local_pos,
                             Some(Block::new(
                                 rock,
-                                PackedData::builder().with_material(Material::Shale).build(),
+                                PackedData::builder().with_material(shale).build(),
                             )),
                         );
                     } else if global_pos.y < height {
-                        let mut block_data = PackedData::builder().with_material(Material::Loam);
+                        let mut block_data = PackedData::builder().with_material(loam);
 
                         if global_pos.y == height.ceil() - 1.0 {
-                            block_data = block_data
-                                .with_bool(true)
-                                .with_material(Material::LushGrass);
+                            block_data = block_data.with_bool(true).with_material(lush_grass);
                         } else {
                             block_data = block_data.with_bool(false);
                         }
