@@ -9,8 +9,8 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Block, BlockFace, BlockType, ChunkMaterial, Loam, LushGrass, Material, Oak, Rock, Shale, Soil,
-    Wood,
+    Block, BlockFace, BlockType, ChunkMaterial, Glass, Loam, LushGrass, Material, Oak, Rock, Shale,
+    Soil, Wood,
 };
 
 pub struct RegistryPlugin;
@@ -119,6 +119,7 @@ fn setup_registry(
     registry.register_block(Rock);
     registry.register_block(Soil);
     registry.register_block(Wood);
+    registry.register_block(Glass);
 
     log::info!(
         "Generating an array of {} textures",

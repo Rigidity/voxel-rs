@@ -32,6 +32,10 @@ impl Material for ChunkMaterial {
         "shader.wgsl".into()
     }
 
+    fn alpha_mode(&self) -> AlphaMode {
+        AlphaMode::Blend
+    }
+
     fn specialize(
         _pipeline: &MaterialPipeline,
         descriptor: &mut RenderPipelineDescriptor,

@@ -1,4 +1,5 @@
 use bevy::{
+    core_pipeline::oit::OrderIndependentTransparencySettings,
     input::mouse::MouseMotion,
     prelude::*,
     window::{CursorGrabMode, CursorOptions},
@@ -44,6 +45,8 @@ fn setup_player(mut commands: Commands) {
             children.spawn((
                 PlayerCamera,
                 Camera3d::default(),
+                OrderIndependentTransparencySettings::default(),
+                Msaa::Off,
                 Projection::Perspective(PerspectiveProjection {
                     fov: 75.0f32.to_radians(),
                     ..Default::default()
@@ -211,15 +214,11 @@ fn update_player(
             && let Some(result) =
                 voxel_raycast(camera_global.translation(), forward_with_pitch, 5.0, &world)
         {
-            let wood = shared_registry.0.block_id("wood");
-            let oak = shared_registry.0.material_id("oak");
+            let glass = shared_registry.0.block_id("glass");
 
             world.set_block(
                 result.previous_position,
-                Some(Block::new(
-                    wood,
-                    PackedData::builder().with_material(oak).build(),
-                )),
+                Some(Block::new(glass, PackedData::builder().build())),
             );
         }
     }

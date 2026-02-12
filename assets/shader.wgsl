@@ -1,5 +1,9 @@
 #import bevy_pbr::mesh_functions::{get_world_from_local, mesh_position_local_to_clip}
 
+#ifdef OIT_ENABLED
+#import bevy_core_pipeline::oit::oit_draw
+#endif // OIT_ENABLED
+
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var my_array_texture: texture_2d_array<f32>;
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var my_array_texture_sampler: sampler;
 @group(#{MATERIAL_BIND_GROUP}) @binding(2) var<uniform> ao_factor: f32;
@@ -43,5 +47,12 @@ fn vs_main(
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let texture_color = textureSampleLevel(my_array_texture, my_array_texture_sampler, in.tex_coords, in.texture_index, 0.0);
-    return vec4<f32>(texture_color.rgb * in.ao, texture_color.a);
+    let color = vec4<f32>(texture_color.rgb * in.ao, texture_color.a);
+
+    #ifdef OIT_ENABLED
+        oit_draw(in.clip_position, color);
+        discard;
+    #endif // OIT_ENABLED
+
+    return color;
 }
