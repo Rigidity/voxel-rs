@@ -6,7 +6,7 @@ pub struct PhysicsPlugin;
 
 impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, move_entities);
+        app.add_systems(FixedUpdate, move_entities);
     }
 }
 

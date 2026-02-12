@@ -1,4 +1,5 @@
 use bevy::{dev_tools::fps_overlay::FpsOverlayPlugin, prelude::*, window::WindowResolution};
+use bevy_transform_interpolation::prelude::*;
 use voxel::{HudPlugin, PhysicsPlugin, PlayerPlugin, RegistryPlugin, WorldPlugin};
 
 fn main() -> Result<()> {
@@ -17,6 +18,7 @@ fn main() -> Result<()> {
                 }),
         )
         .add_plugins((
+            TransformInterpolationPlugin::default(),
             RegistryPlugin,
             PlayerPlugin,
             WorldPlugin,

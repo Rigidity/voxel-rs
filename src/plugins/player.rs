@@ -3,6 +3,7 @@ use bevy::{
     prelude::*,
     window::{CursorGrabMode, CursorOptions},
 };
+use bevy_transform_interpolation::prelude::TransformInterpolation;
 
 use crate::{Aabb, Block, CollisionNormals, PackedData, SharedRegistry, Velocity, World};
 
@@ -39,6 +40,7 @@ fn setup_player(mut commands: Commands) {
             Velocity(Vec3::ZERO),
             Transform::from_xyz(0.0, 50.0, 0.0),
             Visibility::Visible,
+            TransformInterpolation,
         ))
         .with_children(|children| {
             children.spawn((
@@ -49,6 +51,7 @@ fn setup_player(mut commands: Commands) {
                     ..Default::default()
                 }),
                 Transform::from_xyz(0.3, 1.5, 0.3),
+                TransformInterpolation,
             ));
         });
 }
