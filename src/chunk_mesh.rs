@@ -26,10 +26,11 @@ pub fn generate_mesh(
                     continue;
                 };
 
+                let solid = registry.block_type(block.id).is_solid();
+
                 let is_transparent = |neighboring_block: Block| -> bool {
-                    let self_solid = registry.block_type(block.id).is_solid();
                     let neighboring_solid = registry.block_type(neighboring_block.id).is_solid();
-                    !neighboring_solid && self_solid
+                    !neighboring_solid && solid
                 };
 
                 let left = data
@@ -104,6 +105,17 @@ pub fn generate_mesh(
                             index + 2,
                             index + 3,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index + 3,
+                                index + 1,
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 1,
+                            ]);
+                        }
                     } else {
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -113,6 +125,17 @@ pub fn generate_mesh(
                             index + 3,
                             index,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 2,
+                                index + 1,
+                                index,
+                            ]);
+                        }
                     }
                 }
 
@@ -165,6 +188,17 @@ pub fn generate_mesh(
                             index + 2,
                             index + 3,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index + 3,
+                                index + 1,
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 1,
+                            ]);
+                        }
                     } else {
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -174,6 +208,17 @@ pub fn generate_mesh(
                             index + 3,
                             index,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 2,
+                                index + 1,
+                                index,
+                            ]);
+                        }
                     }
                 }
 
@@ -226,6 +271,17 @@ pub fn generate_mesh(
                             index + 2,
                             index + 3,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index + 3,
+                                index + 1,
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 1,
+                            ]);
+                        }
                     } else {
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -235,6 +291,17 @@ pub fn generate_mesh(
                             index + 3,
                             index,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 2,
+                                index + 1,
+                                index,
+                            ]);
+                        }
                     }
                 }
 
@@ -287,6 +354,17 @@ pub fn generate_mesh(
                             index + 2,
                             index + 3,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index + 3,
+                                index + 1,
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 1,
+                            ]);
+                        }
                     } else {
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -296,6 +374,17 @@ pub fn generate_mesh(
                             index + 3,
                             index,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 2,
+                                index + 1,
+                                index,
+                            ]);
+                        }
                     }
                 }
 
@@ -348,6 +437,17 @@ pub fn generate_mesh(
                             index + 2,
                             index + 3,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index + 3,
+                                index + 1,
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 1,
+                            ]);
+                        }
                     } else {
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -357,6 +457,17 @@ pub fn generate_mesh(
                             index + 3,
                             index,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 2,
+                                index + 1,
+                                index,
+                            ]);
+                        }
                     }
                 }
 
@@ -409,6 +520,17 @@ pub fn generate_mesh(
                             index + 2,
                             index + 3,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index + 3,
+                                index + 1,
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 1,
+                            ]);
+                        }
                     } else {
                         mesh.indices.extend_from_slice(&[
                             index,
@@ -418,6 +540,17 @@ pub fn generate_mesh(
                             index + 3,
                             index,
                         ]);
+                        // Add back face for non-solid blocks
+                        if !solid {
+                            mesh.indices.extend_from_slice(&[
+                                index,
+                                index + 3,
+                                index + 2,
+                                index + 2,
+                                index + 1,
+                                index,
+                            ]);
+                        }
                     }
                 }
             }
