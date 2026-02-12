@@ -33,7 +33,7 @@ impl Material for ChunkMaterial {
     }
 
     fn alpha_mode(&self) -> AlphaMode {
-        AlphaMode::Blend
+        AlphaMode::AlphaToCoverage
     }
 
     fn specialize(

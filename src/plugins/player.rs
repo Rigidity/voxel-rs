@@ -1,5 +1,4 @@
 use bevy::{
-    core_pipeline::oit::OrderIndependentTransparencySettings,
     input::mouse::MouseMotion,
     prelude::*,
     window::{CursorGrabMode, CursorOptions},
@@ -45,8 +44,6 @@ fn setup_player(mut commands: Commands) {
             children.spawn((
                 PlayerCamera,
                 Camera3d::default(),
-                OrderIndependentTransparencySettings::default(),
-                Msaa::Off,
                 Projection::Perspective(PerspectiveProjection {
                     fov: 75.0f32.to_radians(),
                     ..Default::default()
