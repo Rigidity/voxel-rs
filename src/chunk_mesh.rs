@@ -62,10 +62,10 @@ pub fn generate_mesh(
 
                     let index = mesh.index();
 
-                    let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Z);
-                    let ao1 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Z);
-                    let ao2 = calculate_ao(data, world_pos, -1, -1, 1, IVec3::Z);
-                    let ao3 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::Z);
+                    let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Z, registry);
+                    let ao1 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Z, registry);
+                    let ao2 = calculate_ao(data, world_pos, -1, -1, 1, IVec3::Z, registry);
+                    let ao3 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::Z, registry);
 
                     mesh.vertices.push(ChunkVertex::new(
                         [x + 1, y + 1, z + 1],
@@ -145,10 +145,10 @@ pub fn generate_mesh(
 
                     let index = mesh.index();
 
-                    let ao0 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::Z);
-                    let ao1 = calculate_ao(data, world_pos, 1, 1, -1, -IVec3::Z);
-                    let ao2 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Z);
-                    let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Z);
+                    let ao0 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::Z, registry);
+                    let ao1 = calculate_ao(data, world_pos, 1, 1, -1, -IVec3::Z, registry);
+                    let ao2 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Z, registry);
+                    let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Z, registry);
 
                     mesh.vertices.push(ChunkVertex::new(
                         [x, y + 1, z],
@@ -228,10 +228,10 @@ pub fn generate_mesh(
 
                     let index = mesh.index();
 
-                    let ao0 = calculate_ao(data, world_pos, -1, 1, 1, -IVec3::X);
-                    let ao1 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::X);
-                    let ao2 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::X);
-                    let ao3 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::X);
+                    let ao0 = calculate_ao(data, world_pos, -1, 1, 1, -IVec3::X, registry);
+                    let ao1 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::X, registry);
+                    let ao2 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::X, registry);
+                    let ao3 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::X, registry);
 
                     mesh.vertices.push(ChunkVertex::new(
                         [x, y + 1, z + 1],
@@ -311,10 +311,10 @@ pub fn generate_mesh(
 
                     let index = mesh.index();
 
-                    let ao0 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::X);
-                    let ao1 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::X);
-                    let ao2 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::X);
-                    let ao3 = calculate_ao(data, world_pos, 1, -1, -1, IVec3::X);
+                    let ao0 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::X, registry);
+                    let ao1 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::X, registry);
+                    let ao2 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::X, registry);
+                    let ao3 = calculate_ao(data, world_pos, 1, -1, -1, IVec3::X, registry);
 
                     mesh.vertices.push(ChunkVertex::new(
                         [x + 1, y + 1, z],
@@ -394,10 +394,10 @@ pub fn generate_mesh(
 
                     let index = mesh.index();
 
-                    let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Y);
-                    let ao1 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::Y);
-                    let ao2 = calculate_ao(data, world_pos, -1, 1, -1, IVec3::Y);
-                    let ao3 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Y);
+                    let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Y, registry);
+                    let ao1 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::Y, registry);
+                    let ao2 = calculate_ao(data, world_pos, -1, 1, -1, IVec3::Y, registry);
+                    let ao3 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Y, registry);
 
                     mesh.vertices.push(ChunkVertex::new(
                         [x + 1, y + 1, z + 1],
@@ -477,10 +477,10 @@ pub fn generate_mesh(
 
                     let index = mesh.index();
 
-                    let ao0 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Y);
-                    let ao1 = calculate_ao(data, world_pos, 1, -1, 1, -IVec3::Y);
-                    let ao2 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::Y);
-                    let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Y);
+                    let ao0 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Y, registry);
+                    let ao1 = calculate_ao(data, world_pos, 1, -1, 1, -IVec3::Y, registry);
+                    let ao2 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::Y, registry);
+                    let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Y, registry);
 
                     mesh.vertices.push(ChunkVertex::new(
                         [x + 1, y, z],
@@ -567,6 +567,7 @@ fn calculate_ao(
     dy: i32,
     dz: i32,
     normal: IVec3,
+    registry: &Registry,
 ) -> u32 {
     let vertex_offset = IVec3::new(dx, dy, dz);
 
@@ -585,9 +586,15 @@ fn calculate_ao(
     let side2_pos = block_pos + normal + axis2 * side2_dir;
     let corner_pos = block_pos + normal + axis1 * side1_dir + axis2 * side2_dir;
 
-    let side1 = data.get_block(side1_pos).is_some();
-    let side2 = data.get_block(side2_pos).is_some();
-    let corner = data.get_block(corner_pos).is_some();
+    let side1 = data
+        .get_block(side1_pos)
+        .is_some_and(|block| registry.block_type(block.id).is_solid());
+    let side2 = data
+        .get_block(side2_pos)
+        .is_some_and(|block| registry.block_type(block.id).is_solid());
+    let corner = data
+        .get_block(corner_pos)
+        .is_some_and(|block| registry.block_type(block.id).is_solid());
 
     let occlusion = if side1 && side2 {
         3
