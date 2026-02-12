@@ -15,6 +15,10 @@ pub trait BlockType: 'static + Send + Sync {
     fn face_data(&self, _face: BlockFace, data: PackedData) -> PackedData {
         data
     }
+
+    fn is_solid(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

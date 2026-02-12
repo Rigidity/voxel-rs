@@ -5,7 +5,8 @@ use bevy::{
 };
 
 use crate::{
-    ATTRIBUTE_PACKED_DATA, ATTRIBUTE_TEXTURE_INDEX, BlockFace, CHUNK_SIZE, Registry, RelevantChunks,
+    ATTRIBUTE_PACKED_DATA, ATTRIBUTE_TEXTURE_INDEX, Block, BlockFace, CHUNK_SIZE, Registry,
+    RelevantChunks,
 };
 
 pub fn generate_mesh(
@@ -25,12 +26,30 @@ pub fn generate_mesh(
                     continue;
                 };
 
-                let left = data.get_block(world_pos - IVec3::X).is_none();
-                let right = data.get_block(world_pos + IVec3::X).is_none();
-                let front = data.get_block(world_pos + IVec3::Z).is_none();
-                let back = data.get_block(world_pos - IVec3::Z).is_none();
-                let top = data.get_block(world_pos + IVec3::Y).is_none();
-                let bottom = data.get_block(world_pos - IVec3::Y).is_none();
+                let is_transparent = |neighboring_block: Block| -> bool {
+                    let self_solid = registry.block_type(block.id).is_solid();
+                    let neighboring_solid = registry.block_type(neighboring_block.id).is_solid();
+                    !neighboring_solid && self_solid
+                };
+
+                let left = data
+                    .get_block(world_pos - IVec3::X)
+                    .is_none_or(is_transparent);
+                let right = data
+                    .get_block(world_pos + IVec3::X)
+                    .is_none_or(is_transparent);
+                let front = data
+                    .get_block(world_pos + IVec3::Z)
+                    .is_none_or(is_transparent);
+                let back = data
+                    .get_block(world_pos - IVec3::Z)
+                    .is_none_or(is_transparent);
+                let top = data
+                    .get_block(world_pos + IVec3::Y)
+                    .is_none_or(is_transparent);
+                let bottom = data
+                    .get_block(world_pos - IVec3::Y)
+                    .is_none_or(is_transparent);
 
                 let x = x as u32;
                 let y = y as u32;

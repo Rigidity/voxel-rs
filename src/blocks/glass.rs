@@ -19,4 +19,8 @@ impl BlockType for Glass {
             texture_index,
         );
     }
+
+    fn is_solid(&self) -> bool {
+        false
+    }
 }
