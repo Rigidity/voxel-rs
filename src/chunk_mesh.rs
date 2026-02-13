@@ -6,7 +6,7 @@ use bevy::{
 };
 
 use crate::{
-    ATTRIBUTE_PACKED_DATA, ATTRIBUTE_TEXTURE_INDEX, CHUNK_SIZE, ModelId, Registry, RelevantChunks,
+    ATTRIBUTE_PACKED_DATA, ATTRIBUTE_TEXTURE_INDEX, CHUNK_SIZE, Registry, RelevantChunks,
     RenderContext,
 };
 
@@ -94,22 +94,14 @@ impl ChunkVertex {
     /// - Position X: 5 bits (bits 25-29)
     /// - Position Y: 5 bits (bits 20-24)
     /// - Position Z: 5 bits (bits 15-19)
-    /// - Model ID: 8 bits (bits 7-14)
-    /// - Vertex Index: 5 bits (bits 2-6)
+    /// - Vertex Index: 13 bits (bits 2-14)
     /// - AO: 2 bits (bits 0-1)
-    pub fn new(
-        local_pos: USizeVec3,
-        model_id: ModelId,
-        vertex_index: u8,
-        ao: u32,
-        texture_index: u32,
-    ) -> Self {
+    pub fn new(local_pos: USizeVec3, vertex_index: u32, ao: u32, texture_index: u32) -> Self {
         Self {
             data: ((local_pos.x as u32) << 25)
                 | ((local_pos.y as u32) << 20)
                 | ((local_pos.z as u32) << 15)
-                | ((model_id.0 as u32) << 7)
-                | ((vertex_index as u32) << 2)
+                | (vertex_index << 2)
                 | ao,
             texture_index,
         }

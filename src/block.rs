@@ -22,69 +22,92 @@ pub trait BlockType: 'static + Send + Sync {
         true
     }
 
-    fn render(&self, ctx: &mut RenderContext) {
-        let is_transparent = |neighboring_block: Block| -> bool {
-            let neighboring_solid = ctx.registry.block_type(neighboring_block.id).is_solid();
-            !neighboring_solid && ctx.registry.block_type(ctx.block.id).is_solid()
-        };
+    fn model_name(&self) -> &str {
+        "cube"
+    }
 
-        let left = ctx
+    fn render(&self, ctx: &mut RenderContext) {
+        render_block_with_model(ctx, self.model_name());
+    }
+}
+
+pub fn render_block_with_model(ctx: &mut RenderContext, model_name: &str) {
+    let model_id = ctx.registry.model_id(model_name);
+    let visible_faces = calculate_visible_faces(ctx);
+
+    // Front face (+Z)
+    if visible_faces.front {
+        ctx.add_face(BlockFace::Front, model_id);
+    }
+
+    // Back face (-Z)
+    if visible_faces.back {
+        ctx.add_face(BlockFace::Back, model_id);
+    }
+
+    // Left face (-X)
+    if visible_faces.left {
+        ctx.add_face(BlockFace::Left, model_id);
+    }
+
+    // Right face (+X)
+    if visible_faces.right {
+        ctx.add_face(BlockFace::Right, model_id);
+    }
+
+    // Top face (+Y)
+    if visible_faces.top {
+        ctx.add_face(BlockFace::Top, model_id);
+    }
+
+    // Bottom face (-Y)
+    if visible_faces.bottom {
+        ctx.add_face(BlockFace::Bottom, model_id);
+    }
+}
+
+pub fn calculate_visible_faces(ctx: &RenderContext) -> VisibleFaces {
+    let is_transparent = |neighboring_block: Block| -> bool {
+        let neighboring_solid = ctx.registry.block_type(neighboring_block.id).is_solid();
+        !neighboring_solid && ctx.registry.block_type(ctx.block.id).is_solid()
+    };
+
+    VisibleFaces {
+        left: ctx
             .data
             .get_block(ctx.world_pos - IVec3::X)
-            .is_none_or(is_transparent);
-        let right = ctx
+            .is_none_or(is_transparent),
+        right: ctx
             .data
             .get_block(ctx.world_pos + IVec3::X)
-            .is_none_or(is_transparent);
-        let front = ctx
+            .is_none_or(is_transparent),
+        front: ctx
             .data
             .get_block(ctx.world_pos + IVec3::Z)
-            .is_none_or(is_transparent);
-        let back = ctx
+            .is_none_or(is_transparent),
+        back: ctx
             .data
             .get_block(ctx.world_pos - IVec3::Z)
-            .is_none_or(is_transparent);
-        let top = ctx
+            .is_none_or(is_transparent),
+        top: ctx
             .data
             .get_block(ctx.world_pos + IVec3::Y)
-            .is_none_or(is_transparent);
-        let bottom = ctx
+            .is_none_or(is_transparent),
+        bottom: ctx
             .data
             .get_block(ctx.world_pos - IVec3::Y)
-            .is_none_or(is_transparent);
-
-        let cube = ctx.registry.model_id("cube");
-
-        // Front face (+Z)
-        if front {
-            ctx.add_face(BlockFace::Front, cube);
-        }
-
-        // Back face (-Z)
-        if back {
-            ctx.add_face(BlockFace::Back, cube);
-        }
-
-        // Left face (-X)
-        if left {
-            ctx.add_face(BlockFace::Left, cube);
-        }
-
-        // Right face (+X)
-        if right {
-            ctx.add_face(BlockFace::Right, cube);
-        }
-
-        // Top face (+Y)
-        if top {
-            ctx.add_face(BlockFace::Top, cube);
-        }
-
-        // Bottom face (-Y)
-        if bottom {
-            ctx.add_face(BlockFace::Bottom, cube);
-        }
+            .is_none_or(is_transparent),
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct VisibleFaces {
+    pub left: bool,
+    pub right: bool,
+    pub front: bool,
+    pub back: bool,
+    pub top: bool,
+    pub bottom: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -123,14 +146,17 @@ impl RenderContext<'_> {
         let solid = self.registry.block_type(self.block.id).is_solid();
         let texture_index = self.registry.texture_index(self.block, face);
 
-        let base_index = match face {
-            BlockFace::Front => 0,
-            BlockFace::Back => 4,
-            BlockFace::Left => 8,
-            BlockFace::Right => 12,
-            BlockFace::Top => 16,
-            BlockFace::Bottom => 20,
-        };
+        let model_index = self.registry.model_offset(model_id);
+
+        let base_index = model_index
+            + match face {
+                BlockFace::Front => 0,
+                BlockFace::Back => 4,
+                BlockFace::Left => 8,
+                BlockFace::Right => 12,
+                BlockFace::Top => 16,
+                BlockFace::Bottom => 20,
+            };
 
         let vertex_indices = [base_index, base_index + 1, base_index + 2, base_index + 3];
 
@@ -205,7 +231,6 @@ impl RenderContext<'_> {
         for i in 0..4 {
             self.mesh.vertices.push(ChunkVertex::new(
                 self.local_pos,
-                model_id,
                 vertex_indices[i],
                 aos[i],
                 texture_index,

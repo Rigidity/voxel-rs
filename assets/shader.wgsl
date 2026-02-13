@@ -36,8 +36,7 @@ fn vs_main(
     let pos_x = (input.data >> 25) & 0x1F;  // 5 bits
     let pos_y = (input.data >> 20) & 0x1F;  // 5 bits
     let pos_z = (input.data >> 15) & 0x1F;  // 5 bits
-    let model_id = (input.data >> 7) & 0xFF;  // 8 bits
-    let vertex_idx = (input.data >> 2) & 0x1F;  // 5 bits
+    let vertex_idx = (input.data >> 2) & 0x1FFF;  // 13 bits
     let ao = input.data & 0x03;  // 2 bits
 
     // Calculate offset into model buffer

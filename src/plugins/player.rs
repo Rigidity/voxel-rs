@@ -214,11 +214,15 @@ fn update_player(
             && let Some(result) =
                 voxel_raycast(camera_global.translation(), forward_with_pitch, 5.0, &world)
         {
-            let glass = shared_registry.0.block_id("glass");
+            let rock_slab = shared_registry.0.block_id("rock_slab");
+            let shale = shared_registry.0.material_id("shale");
 
             world.set_block(
                 result.previous_position,
-                Some(Block::new(glass, PackedData::builder().build())),
+                Some(Block::new(
+                    rock_slab,
+                    PackedData::builder().with_material(shale).build(),
+                )),
             );
         }
     }

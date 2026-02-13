@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Block, BlockFace, BlockType, ChunkMaterial, Cube, Glass, Loam, LushGrass, Material, Model,
-    ModelVertex, Oak, Rock, Shale, Soil, Wood,
+    ModelVertex, Oak, Rock, RockSlab, Shale, Slab, Soil, Wood,
 };
 
 pub struct RegistryPlugin;
@@ -134,6 +134,10 @@ impl Registry {
     pub fn add_vertex(&mut self, vertex: ModelVertex) {
         self.model_data.push(vertex);
     }
+
+    pub fn model_offset(&self, model_id: ModelId) -> u32 {
+        self.model_offsets[&model_id]
+    }
 }
 
 fn setup_registry(
@@ -145,6 +149,7 @@ fn setup_registry(
     let mut registry = Registry::new();
 
     registry.register_model(Cube);
+    registry.register_model(Slab);
 
     registry.register_material(Loam);
     registry.register_material(LushGrass);
@@ -152,6 +157,7 @@ fn setup_registry(
     registry.register_material(Shale);
 
     registry.register_block(Rock);
+    registry.register_block(RockSlab);
     registry.register_block(Soil);
     registry.register_block(Wood);
     registry.register_block(Glass);
