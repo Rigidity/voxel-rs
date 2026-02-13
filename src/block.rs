@@ -22,17 +22,16 @@ pub trait BlockType: 'static + Send + Sync {
         true
     }
 
-    fn model_name(&self) -> &str {
-        "cube"
+    fn model_id(&self, registry: &Registry, _data: PackedData) -> ModelId {
+        registry.model_id("cube")
     }
 
     fn render(&self, ctx: &mut RenderContext) {
-        render_block_with_model(ctx, self.model_name());
+        render_block_with_model(ctx, self.model_id(ctx.registry, ctx.block.data));
     }
 }
 
-pub fn render_block_with_model(ctx: &mut RenderContext, model_name: &str) {
-    let model_id = ctx.registry.model_id(model_name);
+pub fn render_block_with_model(ctx: &mut RenderContext, model_id: ModelId) {
     let visible_faces = calculate_visible_faces(ctx);
 
     // Front face (+Z)

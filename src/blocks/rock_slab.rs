@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{Aabb, Block, BlockType, PackedData, Registry, color_image};
+use crate::{Aabb, Block, BlockType, ModelId, PackedData, Registry, color_image};
 
 pub struct RockSlab;
 
@@ -13,13 +13,12 @@ impl BlockType for RockSlab {
         Some(Aabb::new(Vec3::ZERO, Vec3::new(1.0, 0.5, 1.0)))
     }
 
-    fn model_name(&self) -> &str {
-        "slab"
+    fn model_id(&self, registry: &Registry, _data: PackedData) -> ModelId {
+        registry.model_id("slab")
     }
 
     fn register(&self, registry: &mut Registry) {
         let block_id = registry.block_id(&self.unique_name());
-        // Use the same rock texture as the regular Rock block
         let image =
             image::load_from_memory(include_bytes!("../../textures/blocks/rock.png")).unwrap();
 
