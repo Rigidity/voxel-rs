@@ -1,4 +1,8 @@
-use crate::{Block, BlockType, PackedData, Registry};
+use bevy::math::Rect;
+
+use crate::{
+    Block, BlockFace, BlockType, PackedData, Registry, RenderContext, render_block_with_model,
+};
 
 pub struct Glass;
 
@@ -20,7 +24,11 @@ impl BlockType for Glass {
         );
     }
 
-    fn is_solid(&self) -> bool {
-        false
+    fn opaque_face_rect(&self, _face: BlockFace, _data: PackedData) -> Option<Rect> {
+        None
+    }
+
+    fn render(&self, ctx: &mut RenderContext) {
+        render_block_with_model(ctx, self.model_id(ctx.registry, ctx.block.data), true);
     }
 }

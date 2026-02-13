@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{Aabb, Block, BlockType, ModelId, PackedData, Registry, color_image};
+use crate::{Aabb, Block, BlockFace, BlockType, ModelId, PackedData, Registry, color_image};
 
 pub struct RockSlab;
 
@@ -36,6 +36,14 @@ impl BlockType for RockSlab {
                 Block::new(block_id, PackedData::builder().with_material(id).build()),
                 texture_index,
             );
+        }
+    }
+
+    fn opaque_face_rect(&self, face: BlockFace, _data: PackedData) -> Option<Rect> {
+        match face {
+            BlockFace::Top => None,
+            BlockFace::Bottom => Some(Rect::new(0.0, 0.0, 1.0, 1.0)),
+            _ => Some(Rect::new(0.0, 0.0, 1.0, 0.5)),
         }
     }
 }
