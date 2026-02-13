@@ -101,22 +101,73 @@ fn move_with_collision(
 ) {
     collision_normals.0.clear();
 
-    for _ in 0..3 {
-        let collision = check_collision(Aabb::new(*position, size), delta, world, registry)
-            .into_iter()
-            .min_by(|a, b| a.time.total_cmp(&b.time));
+    let mut previous_position = *position;
 
-        if let Some(Collision { time, normal }) = collision {
-            collision_normals.0.push(normal);
+    loop {
+        let source = Aabb::new(previous_position, size);
+        let target = source.translate(delta);
+        let min = Vec3::min(source.min(), target.min()).floor();
+        let max = Vec3::max(source.max(), target.max()).ceil();
 
-            const TOLERANCE: f32 = 1.0 / 4096.0;
-            *position += TOLERANCE * normal + delta * time;
-            let remaining_time = 1.0 - time;
-            delta = delta.reject_from_normalized(normal) * remaining_time;
-            *velocity = velocity.reject_from_normalized(normal);
-        } else {
-            *position += delta;
-            return;
+        let mut collision = Collision {
+            time: 1.0,
+            normal: Vec3::ZERO,
+        };
+
+        for x in min.x as i32..max.x as i32 {
+            for y in min.y as i32..max.y as i32 {
+                for z in min.z as i32..max.z as i32 {
+                    let block_pos = IVec3::new(x, y, z);
+                    if let Some(block) = world.get_block(block_pos)
+                        && let Some(block_aabb) = registry
+                            .block_type(block.id)
+                            .get_aabb(block.data)
+                            .map(|aabb| {
+                                aabb.translate(Vec3::new(
+                                    block_pos.x as f32,
+                                    block_pos.y as f32,
+                                    block_pos.z as f32,
+                                ))
+                            })
+                    {
+                        let c = swept_aabb(
+                            previous_position,
+                            size,
+                            block_aabb.min(),
+                            block_aabb.size(),
+                            delta,
+                        );
+
+                        if c.time < collision.time {
+                            collision = c;
+                        }
+                    }
+                }
+            }
+        }
+
+        let epsilon = 0.001;
+
+        *position = previous_position + collision.time * delta + epsilon * collision.normal;
+
+        if collision.time == 1.0 {
+            break;
+        }
+
+        collision_normals.0.push(collision.normal);
+
+        let b_dot_b = collision.normal.dot(collision.normal);
+
+        if b_dot_b != 0.0 {
+            previous_position = *position;
+
+            let velocity_dot_normal = velocity.dot(collision.normal);
+            *velocity -= velocity_dot_normal * collision.normal;
+
+            let remaining = (1.0 - collision.time) * delta;
+            let a_dot_b = remaining.dot(collision.normal);
+            *position += remaining - (a_dot_b / b_dot_b) * collision.normal;
+            delta = remaining - (a_dot_b / b_dot_b) * collision.normal;
         }
     }
 }
@@ -126,77 +177,98 @@ struct Collision {
     normal: Vec3,
 }
 
-fn check_collision(
-    source: Aabb,
-    delta: Vec3,
-    world: &World,
-    registry: &Registry,
-) -> Vec<Collision> {
-    let mut collisions = Vec::new();
+fn swept_aabb(a: Vec3, ah: Vec3, b: Vec3, bh: Vec3, d: Vec3) -> Collision {
+    let m = b - (a + ah);
+    let mh = ah + bh;
 
-    let target = source.translate(delta);
-    let min = Vec3::min(source.min(), target.min()).floor();
-    let max = Vec3::max(source.max(), target.max()).ceil();
+    let mut time = 1.0;
+    let mut normal = Vec3::ZERO;
 
-    for x in min.x as i32..max.x as i32 {
-        for y in min.y as i32..max.y as i32 {
-            for z in min.z as i32..max.z as i32 {
-                let block_pos = IVec3::new(x, y, z);
-                if let Some(block) = world.get_block(block_pos)
-                    && let Some(block_aabb) = registry
-                        .block_type(block.id)
-                        .get_aabb(block.data)
-                        .map(|aabb| {
-                            aabb.translate(Vec3::new(
-                                block_pos.x as f32,
-                                block_pos.y as f32,
-                                block_pos.z as f32,
-                            ))
-                        })
-                {
-                    collisions.extend(swept_aabb(delta, source, block_aabb))
-                }
-            }
-        }
+    let s = line_to_plane(Vec3::ZERO, d, m, Vec3::NEG_X);
+
+    if s >= 0.0
+        && d.x > 0.0
+        && s < time
+        && between(s * d.y, m.y, m.y + mh.y)
+        && between(s * d.z, m.z, m.z + mh.z)
+    {
+        time = s;
+        normal = Vec3::NEG_X;
     }
 
-    collisions
+    let s = line_to_plane(Vec3::ZERO, d, m + mh * Vec3::X, Vec3::X);
+
+    if s >= 0.0
+        && d.x < 0.0
+        && s < time
+        && between(s * d.y, m.y, m.y + mh.y)
+        && between(s * d.z, m.z, m.z + mh.z)
+    {
+        time = s;
+        normal = Vec3::X;
+    }
+
+    let s = line_to_plane(Vec3::ZERO, d, m, Vec3::NEG_Y);
+
+    if s >= 0.0
+        && d.y > 0.0
+        && s < time
+        && between(s * d.x, m.x, m.x + mh.x)
+        && between(s * d.z, m.z, m.z + mh.z)
+    {
+        time = s;
+        normal = Vec3::NEG_Y;
+    }
+
+    let s = line_to_plane(Vec3::ZERO, d, m + mh * Vec3::Y, Vec3::Y);
+
+    if s >= 0.0
+        && d.y < 0.0
+        && s < time
+        && between(s * d.x, m.x, m.x + mh.x)
+        && between(s * d.z, m.z, m.z + mh.z)
+    {
+        time = s;
+        normal = Vec3::Y;
+    }
+
+    let s = line_to_plane(Vec3::ZERO, d, m, Vec3::NEG_Z);
+
+    if s >= 0.0
+        && d.z > 0.0
+        && s < time
+        && between(s * d.x, m.x, m.x + mh.x)
+        && between(s * d.y, m.y, m.y + mh.y)
+    {
+        time = s;
+        normal = Vec3::NEG_Z;
+    }
+
+    let s = line_to_plane(Vec3::ZERO, d, m + mh * Vec3::Z, Vec3::Z);
+
+    if s >= 0.0
+        && d.z < 0.0
+        && s < time
+        && between(s * d.x, m.x, m.x + mh.x)
+        && between(s * d.y, m.y, m.y + mh.y)
+    {
+        time = s;
+        normal = Vec3::Z;
+    }
+
+    Collision { time, normal }
 }
 
-fn swept_aabb(delta: Vec3, moving: Aabb, still: Aabb) -> Option<Collision> {
-    let before = still.min() - moving.max();
-    let after = still.max() - moving.min();
-    let positive = delta.cmpgt(Vec3::ZERO);
-    let zero = delta.cmpeq(Vec3::ZERO);
-    let entry = Vec3::select(positive, before, after);
-    let entry = Vec3::select(zero, Vec3::NEG_INFINITY, entry / delta);
+fn line_to_plane(p: Vec3, u: Vec3, v: Vec3, n: Vec3) -> f32 {
+    let n_dot_u = n.dot(u);
 
-    let exit = Vec3::select(positive, after, before);
-    let exit = Vec3::select(zero, Vec3::INFINITY, exit / delta);
-
-    let time = entry.max_element();
-
-    if !(0.0..=1.0).contains(&time) {
-        return None;
+    if n_dot_u == 0.0 {
+        return f32::INFINITY;
     }
 
-    if time > exit.min_element() {
-        return None;
-    }
+    n.dot(v - p) / n_dot_u
+}
 
-    let normal = if time == entry.x && positive.x {
-        Vec3::NEG_X
-    } else if time == entry.x {
-        Vec3::X
-    } else if time == entry.y && positive.y {
-        Vec3::NEG_Y
-    } else if time == entry.y {
-        Vec3::Y
-    } else if positive.z {
-        Vec3::NEG_Z
-    } else {
-        Vec3::Z
-    };
-
-    Some(Collision { time, normal })
+fn between(value: f32, min: f32, max: f32) -> bool {
+    value >= min && value <= max
 }
