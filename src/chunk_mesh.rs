@@ -5,8 +5,8 @@ use bevy::{
 };
 
 use crate::{
-    ATTRIBUTE_PACKED_DATA, ATTRIBUTE_TEXTURE_INDEX, Block, BlockFace, CHUNK_SIZE, Registry,
-    RelevantChunks,
+    ATTRIBUTE_PACKED_DATA, ATTRIBUTE_TEXTURE_INDEX, Block, BlockFace, CHUNK_SIZE, ModelId,
+    Registry, RelevantChunks,
 };
 
 pub fn generate_mesh(
@@ -52,512 +52,234 @@ pub fn generate_mesh(
                     .get_block(world_pos - IVec3::Y)
                     .is_none_or(is_transparent);
 
+                let cube_model_id = registry
+                    .model_registry
+                    .get_model_id("cube")
+                    .expect("Cube model not registered");
+
                 let x = x as u32;
                 let y = y as u32;
                 let z = z as u32;
 
                 // Front face (+Z)
                 if front {
-                    let texture_index = registry.texture_index(block, BlockFace::Front);
-
-                    let index = mesh.index();
-
-                    let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Z, registry);
-                    let ao1 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Z, registry);
-                    let ao2 = calculate_ao(data, world_pos, -1, -1, 1, IVec3::Z, registry);
-                    let ao3 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::Z, registry);
-
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y + 1, z + 1],
-                        [1, 0],
-                        [0, 0, 1],
-                        ao0,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y + 1, z + 1],
-                        [0, 0],
-                        [0, 0, 1],
-                        ao1,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y, z + 1],
-                        [0, 1],
-                        [0, 0, 1],
-                        ao2,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y, z + 1],
-                        [1, 1],
-                        [0, 0, 1],
-                        ao3,
-                        texture_index,
-                    ));
-
-                    if ao0 + ao2 < ao1 + ao3 {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 3,
-                            index + 1,
-                            index + 2,
-                            index + 3,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index + 3,
-                                index + 1,
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 1,
-                            ]);
-                        }
-                    } else {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 2,
-                                index + 1,
-                                index,
-                            ]);
-                        }
-                    }
+                    add_face(
+                        &mut mesh,
+                        data,
+                        world_pos,
+                        [x, y, z],
+                        BlockFace::Front,
+                        block,
+                        cube_model_id,
+                        solid,
+                        registry,
+                    );
                 }
 
                 // Back face (-Z)
                 if back {
-                    let texture_index = registry.texture_index(block, BlockFace::Back);
-
-                    let index = mesh.index();
-
-                    let ao0 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::Z, registry);
-                    let ao1 = calculate_ao(data, world_pos, 1, 1, -1, -IVec3::Z, registry);
-                    let ao2 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Z, registry);
-                    let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Z, registry);
-
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y + 1, z],
-                        [1, 0],
-                        [0, 0, -1],
-                        ao0,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y + 1, z],
-                        [0, 0],
-                        [0, 0, -1],
-                        ao1,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y, z],
-                        [0, 1],
-                        [0, 0, -1],
-                        ao2,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
+                    add_face(
+                        &mut mesh,
+                        data,
+                        world_pos,
                         [x, y, z],
-                        [1, 1],
-                        [0, 0, -1],
-                        ao3,
-                        texture_index,
-                    ));
-
-                    if ao0 + ao2 < ao1 + ao3 {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 3,
-                            index + 1,
-                            index + 2,
-                            index + 3,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index + 3,
-                                index + 1,
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 1,
-                            ]);
-                        }
-                    } else {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 2,
-                                index + 1,
-                                index,
-                            ]);
-                        }
-                    }
+                        BlockFace::Back,
+                        block,
+                        cube_model_id,
+                        solid,
+                        registry,
+                    );
                 }
 
                 // Left face (-X)
                 if left {
-                    let texture_index = registry.texture_index(block, BlockFace::Left);
-
-                    let index = mesh.index();
-
-                    let ao0 = calculate_ao(data, world_pos, -1, 1, 1, -IVec3::X, registry);
-                    let ao1 = calculate_ao(data, world_pos, -1, 1, -1, -IVec3::X, registry);
-                    let ao2 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::X, registry);
-                    let ao3 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::X, registry);
-
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y + 1, z + 1],
-                        [1, 0],
-                        [-1, 0, 0],
-                        ao0,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y + 1, z],
-                        [0, 0],
-                        [-1, 0, 0],
-                        ao1,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
+                    add_face(
+                        &mut mesh,
+                        data,
+                        world_pos,
                         [x, y, z],
-                        [0, 1],
-                        [-1, 0, 0],
-                        ao2,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y, z + 1],
-                        [1, 1],
-                        [-1, 0, 0],
-                        ao3,
-                        texture_index,
-                    ));
-
-                    if ao0 + ao2 < ao1 + ao3 {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 3,
-                            index + 1,
-                            index + 2,
-                            index + 3,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index + 3,
-                                index + 1,
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 1,
-                            ]);
-                        }
-                    } else {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 2,
-                                index + 1,
-                                index,
-                            ]);
-                        }
-                    }
+                        BlockFace::Left,
+                        block,
+                        cube_model_id,
+                        solid,
+                        registry,
+                    );
                 }
 
                 // Right face (+X)
                 if right {
-                    let texture_index = registry.texture_index(block, BlockFace::Right);
-
-                    let index = mesh.index();
-
-                    let ao0 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::X, registry);
-                    let ao1 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::X, registry);
-                    let ao2 = calculate_ao(data, world_pos, 1, -1, 1, IVec3::X, registry);
-                    let ao3 = calculate_ao(data, world_pos, 1, -1, -1, IVec3::X, registry);
-
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y + 1, z],
-                        [1, 0],
-                        [1, 0, 0],
-                        ao0,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y + 1, z + 1],
-                        [0, 0],
-                        [1, 0, 0],
-                        ao1,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y, z + 1],
-                        [0, 1],
-                        [1, 0, 0],
-                        ao2,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y, z],
-                        [1, 1],
-                        [1, 0, 0],
-                        ao3,
-                        texture_index,
-                    ));
-
-                    if ao0 + ao2 < ao1 + ao3 {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 3,
-                            index + 1,
-                            index + 2,
-                            index + 3,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index + 3,
-                                index + 1,
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 1,
-                            ]);
-                        }
-                    } else {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 2,
-                                index + 1,
-                                index,
-                            ]);
-                        }
-                    }
+                    add_face(
+                        &mut mesh,
+                        data,
+                        world_pos,
+                        [x, y, z],
+                        BlockFace::Right,
+                        block,
+                        cube_model_id,
+                        solid,
+                        registry,
+                    );
                 }
 
                 // Top face (+Y)
                 if top {
-                    let texture_index = registry.texture_index(block, BlockFace::Top);
-
-                    let index = mesh.index();
-
-                    let ao0 = calculate_ao(data, world_pos, 1, 1, 1, IVec3::Y, registry);
-                    let ao1 = calculate_ao(data, world_pos, 1, 1, -1, IVec3::Y, registry);
-                    let ao2 = calculate_ao(data, world_pos, -1, 1, -1, IVec3::Y, registry);
-                    let ao3 = calculate_ao(data, world_pos, -1, 1, 1, IVec3::Y, registry);
-
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y + 1, z + 1],
-                        [1, 1],
-                        [0, 1, 0],
-                        ao0,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y + 1, z],
-                        [1, 0],
-                        [0, 1, 0],
-                        ao1,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y + 1, z],
-                        [0, 0],
-                        [0, 1, 0],
-                        ao2,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y + 1, z + 1],
-                        [0, 1],
-                        [0, 1, 0],
-                        ao3,
-                        texture_index,
-                    ));
-
-                    if ao0 + ao2 < ao1 + ao3 {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 3,
-                            index + 1,
-                            index + 2,
-                            index + 3,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index + 3,
-                                index + 1,
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 1,
-                            ]);
-                        }
-                    } else {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 2,
-                                index + 1,
-                                index,
-                            ]);
-                        }
-                    }
+                    add_face(
+                        &mut mesh,
+                        data,
+                        world_pos,
+                        [x, y, z],
+                        BlockFace::Top,
+                        block,
+                        cube_model_id,
+                        solid,
+                        registry,
+                    );
                 }
 
                 // Bottom face (-Y)
                 if bottom {
-                    let texture_index = registry.texture_index(block, BlockFace::Bottom);
-
-                    let index = mesh.index();
-
-                    let ao0 = calculate_ao(data, world_pos, 1, -1, -1, -IVec3::Y, registry);
-                    let ao1 = calculate_ao(data, world_pos, 1, -1, 1, -IVec3::Y, registry);
-                    let ao2 = calculate_ao(data, world_pos, -1, -1, 1, -IVec3::Y, registry);
-                    let ao3 = calculate_ao(data, world_pos, -1, -1, -1, -IVec3::Y, registry);
-
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y, z],
-                        [1, 1],
-                        [0, -1, 0],
-                        ao0,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x + 1, y, z + 1],
-                        [1, 0],
-                        [0, -1, 0],
-                        ao1,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
-                        [x, y, z + 1],
-                        [0, 0],
-                        [0, -1, 0],
-                        ao2,
-                        texture_index,
-                    ));
-                    mesh.vertices.push(ChunkVertex::new(
+                    add_face(
+                        &mut mesh,
+                        data,
+                        world_pos,
                         [x, y, z],
-                        [0, 1],
-                        [0, -1, 0],
-                        ao3,
-                        texture_index,
-                    ));
-
-                    if ao0 + ao2 < ao1 + ao3 {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 3,
-                            index + 1,
-                            index + 2,
-                            index + 3,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index + 3,
-                                index + 1,
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 1,
-                            ]);
-                        }
-                    } else {
-                        mesh.indices.extend_from_slice(&[
-                            index,
-                            index + 1,
-                            index + 2,
-                            index + 2,
-                            index + 3,
-                            index,
-                        ]);
-                        // Add back face for non-solid blocks
-                        if !solid {
-                            mesh.indices.extend_from_slice(&[
-                                index,
-                                index + 3,
-                                index + 2,
-                                index + 2,
-                                index + 1,
-                                index,
-                            ]);
-                        }
-                    }
+                        BlockFace::Bottom,
+                        block,
+                        cube_model_id,
+                        solid,
+                        registry,
+                    );
                 }
             }
         }
     }
 
     mesh.build()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn add_face(
+    mesh: &mut ChunkMeshBuilder,
+    data: &RelevantChunks,
+    world_pos: IVec3,
+    block_pos: [u32; 3],
+    face: BlockFace,
+    block: Block,
+    default_model_id: ModelId,
+    solid: bool,
+    registry: &Registry,
+) {
+    let texture_index = registry.texture_index(block, face);
+    let block_type = registry.block_type(block.id);
+    let (model_id, vertex_indices) = block_type.get_face_vertices(face, default_model_id);
+
+    let index = mesh.index();
+
+    // Calculate AO for each vertex
+    let (normal, ao_offsets) = match face {
+        BlockFace::Front => (IVec3::Z, [(1, 1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)]),
+        BlockFace::Back => (
+            -IVec3::Z,
+            [(-1, 1, -1), (1, 1, -1), (1, -1, -1), (-1, -1, -1)],
+        ),
+        BlockFace::Left => (
+            -IVec3::X,
+            [(-1, 1, 1), (-1, 1, -1), (-1, -1, -1), (-1, -1, 1)],
+        ),
+        BlockFace::Right => (IVec3::X, [(1, 1, -1), (1, 1, 1), (1, -1, 1), (1, -1, -1)]),
+        BlockFace::Top => (IVec3::Y, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1)]),
+        BlockFace::Bottom => (
+            -IVec3::Y,
+            [(1, -1, -1), (1, -1, 1), (-1, -1, 1), (-1, -1, -1)],
+        ),
+    };
+
+    let aos: [u32; 4] = [
+        calculate_ao(
+            data,
+            world_pos,
+            ao_offsets[0].0,
+            ao_offsets[0].1,
+            ao_offsets[0].2,
+            normal,
+            registry,
+        ),
+        calculate_ao(
+            data,
+            world_pos,
+            ao_offsets[1].0,
+            ao_offsets[1].1,
+            ao_offsets[1].2,
+            normal,
+            registry,
+        ),
+        calculate_ao(
+            data,
+            world_pos,
+            ao_offsets[2].0,
+            ao_offsets[2].1,
+            ao_offsets[2].2,
+            normal,
+            registry,
+        ),
+        calculate_ao(
+            data,
+            world_pos,
+            ao_offsets[3].0,
+            ao_offsets[3].1,
+            ao_offsets[3].2,
+            normal,
+            registry,
+        ),
+    ];
+
+    // Add vertices
+    for i in 0..4 {
+        mesh.vertices.push(ChunkVertex::new(
+            block_pos,
+            model_id,
+            vertex_indices[i],
+            aos[i],
+            texture_index,
+        ));
+    }
+
+    // Add indices with proper winding based on AO
+    if aos[0] + aos[2] < aos[1] + aos[3] {
+        mesh.indices.extend_from_slice(&[
+            index,
+            index + 1,
+            index + 3,
+            index + 1,
+            index + 2,
+            index + 3,
+        ]);
+        // Add back face for non-solid blocks
+        if !solid {
+            mesh.indices.extend_from_slice(&[
+                index + 3,
+                index + 1,
+                index,
+                index + 3,
+                index + 2,
+                index + 1,
+            ]);
+        }
+    } else {
+        mesh.indices
+            .extend_from_slice(&[index, index + 1, index + 2, index + 2, index + 3, index]);
+        // Add back face for non-solid blocks
+        if !solid {
+            mesh.indices.extend_from_slice(&[
+                index,
+                index + 3,
+                index + 2,
+                index + 2,
+                index + 1,
+                index,
+            ]);
+        }
+    }
 }
 
 fn calculate_ao(
@@ -652,20 +374,28 @@ pub struct ChunkVertex {
 }
 
 impl ChunkVertex {
+    /// Creates a new chunk vertex with bitpacked data
+    /// Packing layout (30 bits total in u32):
+    /// - Position X: 5 bits (bits 25-29)
+    /// - Position Y: 5 bits (bits 20-24)
+    /// - Position Z: 5 bits (bits 15-19)
+    /// - Model ID: 8 bits (bits 7-14)
+    /// - Vertex Index: 5 bits (bits 2-6)
+    /// - AO: 2 bits (bits 0-1)
     pub fn new(
         position: [u32; 3],
-        tex_coords: [u32; 2],
-        _normal: [i32; 3],
+        model_id: ModelId,
+        vertex_index: u8,
         ao: u32,
         texture_index: u32,
     ) -> Self {
         Self {
-            data: (position[0] << 26)
+            data: (position[0] << 25)
                 | (position[1] << 20)
-                | (position[2] << 14)
-                | (tex_coords[0] << 13)
-                | (tex_coords[1] << 12)
-                | (ao << 10),
+                | (position[2] << 15)
+                | ((model_id.0 as u32) << 7)
+                | ((vertex_index as u32) << 2)
+                | ao,
             texture_index,
         }
     }

@@ -1,16 +1,20 @@
 use std::{collections::HashMap, sync::Arc};
 
 use bevy::{
+    asset::RenderAssetUsages,
     prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+    render::{
+        render_resource::{Extent3d, TextureDimension, TextureFormat},
+        storage::ShaderStorageBuffer,
+    },
 };
 use image::DynamicImage;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Block, BlockFace, BlockType, ChunkMaterial, Glass, Loam, LushGrass, Material, Oak, Rock, Shale,
-    Soil, Wood,
+    Block, BlockFace, BlockType, ChunkMaterial, Glass, Loam, LushGrass, Material, Model,
+    ModelRegistry, Oak, Rock, Shale, Soil, Wood,
 };
 
 pub struct RegistryPlugin;
@@ -47,6 +51,7 @@ pub struct Registry {
     block_types: HashMap<BlockId, Box<dyn BlockType>>,
     block_texture_indices: HashMap<Block, u32>,
     texture_array: Vec<DynamicImage>,
+    pub model_registry: ModelRegistry,
 }
 
 impl Registry {
@@ -108,8 +113,14 @@ fn setup_registry(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<ChunkMaterial>>,
+    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
 ) {
     let mut registry = Registry::new();
+
+    // Register the standard cube model
+    registry
+        .model_registry
+        .register_model("cube".to_string(), Model::cube());
 
     registry.register_material(Loam);
     registry.register_material(LushGrass);
@@ -149,13 +160,31 @@ fn setup_registry(
         Default::default(),
     );
 
-    let handle = images.add(texture_array);
+    let texture_handle = images.add(texture_array);
+
+    // Create model buffer data
+    let model_data = registry.model_registry.flatten_to_buffer();
+    log::info!(
+        "Creating model buffer with {} floats ({} bytes)",
+        model_data.len(),
+        model_data.len() * 4
+    );
+
+    // Convert Vec<f32> to bytes
+    let buffer_bytes: Vec<u8> = model_data.iter().flat_map(|f| f.to_le_bytes()).collect();
+
+    let storage_buffer = ShaderStorageBuffer::new(&buffer_bytes, RenderAssetUsages::RENDER_WORLD);
+    let buffer_handle = buffers.add(storage_buffer);
 
     let material = materials.add(ChunkMaterial {
-        array_texture: handle.clone(),
+        array_texture: texture_handle.clone(),
         ao_factor: 0.3,
+        model_buffer: buffer_handle,
     });
 
     commands.insert_resource(SharedRegistry(Arc::new(registry)));
-    commands.insert_resource(BlockTextureArray { handle, material });
+    commands.insert_resource(BlockTextureArray {
+        handle: texture_handle,
+        material,
+    });
 }

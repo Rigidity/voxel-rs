@@ -4,9 +4,16 @@
 #import bevy_core_pipeline::oit::oit_draw
 #endif // OIT_ENABLED
 
+struct ModelVertex {
+    position: vec3<f32>,
+    uv: vec2<f32>,
+    normal: vec3<f32>,
+}
+
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var my_array_texture: texture_2d_array<f32>;
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var my_array_texture_sampler: sampler;
 @group(#{MATERIAL_BIND_GROUP}) @binding(2) var<uniform> ao_factor: f32;
+@group(#{MATERIAL_BIND_GROUP}) @binding(3) var<storage, read> model_buffer: array<f32>;
 
 struct VertexInput {
     @builtin(instance_index) instance_index: u32,
@@ -23,24 +30,47 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(
-    model: VertexInput,
+    input: VertexInput,
 ) -> VertexOutput {
-    let x = (model.data >> 26) & 0x3F;
-    let y = (model.data >> 20) & 0x3F;
-    let z = (model.data >> 14) & 0x3F;
-    let u = (model.data >> 13) & 0x01;
-    let v = (model.data >> 12) & 0x01;
-    let ao = (model.data >> 10) & 0x03;
+    // Unpack bitpacked data
+    let pos_x = (input.data >> 25) & 0x1F;  // 5 bits
+    let pos_y = (input.data >> 20) & 0x1F;  // 5 bits
+    let pos_z = (input.data >> 15) & 0x1F;  // 5 bits
+    let model_id = (input.data >> 7) & 0xFF;  // 8 bits
+    let vertex_idx = (input.data >> 2) & 0x1F;  // 5 bits
+    let ao = input.data & 0x03;  // 2 bits
 
-    let position = vec4<f32>(f32(x), f32(y), f32(z), 1.0);
-    let tex_coords = vec2<f32>(f32(u), f32(v));
+    // Calculate offset into model buffer
+    // Each model starts at a different offset, but for now we can calculate directly
+    // Each vertex is 8 floats: position(3) + uv(2) + normal(3)
+    let buffer_idx = vertex_idx * 8u;
+
+    // Read model vertex data from buffer
+    let model_position = vec3<f32>(
+        model_buffer[buffer_idx],
+        model_buffer[buffer_idx + 1u],
+        model_buffer[buffer_idx + 2u]
+    );
+    let model_uv = vec2<f32>(
+        model_buffer[buffer_idx + 3u],
+        model_buffer[buffer_idx + 4u]
+    );
+    let model_normal = vec3<f32>(
+        model_buffer[buffer_idx + 5u],
+        model_buffer[buffer_idx + 6u],
+        model_buffer[buffer_idx + 7u]
+    );
+
+    // Combine chunk position with model position
+    let block_pos = vec3<f32>(f32(pos_x), f32(pos_y), f32(pos_z));
+    let final_position = vec4<f32>(block_pos + model_position, 1.0);
 
     var out: VertexOutput;
-    out.tex_coords = tex_coords;
+    out.tex_coords = model_uv;
     let ao_value = f32(ao) / 3.0;
     out.ao = mix(1.0, ao_value, ao_factor);
-    out.clip_position = mesh_position_local_to_clip(get_world_from_local(model.instance_index), position);
-    out.texture_index = model.texture_index;
+    out.clip_position = mesh_position_local_to_clip(get_world_from_local(input.instance_index), final_position);
+    out.texture_index = input.texture_index;
     return out;
 }
 

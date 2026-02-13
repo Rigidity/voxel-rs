@@ -2,8 +2,9 @@ use bevy::{
     mesh::{MeshVertexAttribute, MeshVertexBufferLayoutRef, VertexFormat},
     pbr::{MaterialPipeline, MaterialPipelineKey},
     prelude::*,
-    render::render_resource::{
-        AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError,
+    render::{
+        render_resource::{AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError},
+        storage::ShaderStorageBuffer,
     },
     shader::ShaderRef,
 };
@@ -15,6 +16,8 @@ pub struct ChunkMaterial {
     pub array_texture: Handle<Image>,
     #[uniform(2)]
     pub ao_factor: f32,
+    #[storage(3, read_only)]
+    pub model_buffer: Handle<ShaderStorageBuffer>,
 }
 
 pub const ATTRIBUTE_PACKED_DATA: MeshVertexAttribute =
