@@ -13,8 +13,8 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Block, BlockFace, BlockType, ChunkMaterial, Glass, Loam, LushGrass, Material, Model,
-    ModelRegistry, Oak, Rock, Shale, Soil, Wood,
+    Block, BlockFace, BlockType, ChunkMaterial, Cube, Glass, Loam, LushGrass, Material, Model,
+    ModelVertex, Oak, Rock, Shale, Soil, Wood,
 };
 
 pub struct RegistryPlugin;
@@ -40,6 +40,9 @@ pub struct BlockId(pub u16);
 #[serde(transparent)]
 pub struct MaterialId(pub u16);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ModelId(pub u8);
+
 #[derive(Resource)]
 pub struct SharedRegistry(pub Arc<Registry>);
 
@@ -49,9 +52,12 @@ pub struct Registry {
     materials: HashMap<MaterialId, Box<dyn Material>>,
     block_ids: HashMap<String, BlockId>,
     block_types: HashMap<BlockId, Box<dyn BlockType>>,
+    model_ids: HashMap<String, ModelId>,
+    models: HashMap<ModelId, Box<dyn Model>>,
     block_texture_indices: HashMap<Block, u32>,
     texture_array: Vec<DynamicImage>,
-    pub model_registry: ModelRegistry,
+    model_offsets: HashMap<ModelId, u32>,
+    model_data: Vec<ModelVertex>,
 }
 
 impl Registry {
@@ -85,12 +91,29 @@ impl Registry {
         self.block_types.insert(block_id, Box::new(block));
     }
 
+    pub fn register_model(&mut self, model: impl Model) {
+        let model_id = ModelId(self.model_ids.len() as u8);
+        self.model_ids.insert(model.unique_name(), model_id);
+        self.model_offsets
+            .insert(model_id, self.model_data.len() as u32);
+        self.model_data.extend(model.vertices());
+        self.models.insert(model_id, Box::new(model));
+    }
+
     pub fn block_id(&self, name: &str) -> BlockId {
         self.block_ids[name]
     }
 
     pub fn block_type(&self, id: BlockId) -> &dyn BlockType {
         &*self.block_types[&id]
+    }
+
+    pub fn model_id(&self, name: &str) -> ModelId {
+        self.model_ids[name]
+    }
+
+    pub fn model(&self, id: ModelId) -> &dyn Model {
+        &*self.models[&id]
     }
 
     pub fn add_image(&mut self, image: DynamicImage) -> u32 {
@@ -107,6 +130,10 @@ impl Registry {
         let data = self.block_type(block.id).face_data(face, block.data);
         self.block_texture_indices[&Block::new(block.id, data)]
     }
+
+    pub fn add_vertex(&mut self, vertex: ModelVertex) {
+        self.model_data.push(vertex);
+    }
 }
 
 fn setup_registry(
@@ -117,10 +144,7 @@ fn setup_registry(
 ) {
     let mut registry = Registry::new();
 
-    // Register the standard cube model
-    registry
-        .model_registry
-        .register_model("cube".to_string(), Model::cube());
+    registry.register_model(Cube);
 
     registry.register_material(Loam);
     registry.register_material(LushGrass);
@@ -162,18 +186,25 @@ fn setup_registry(
 
     let texture_handle = images.add(texture_array);
 
-    // Create model buffer data
-    let model_data = registry.model_registry.flatten_to_buffer();
-    log::info!(
-        "Creating model buffer with {} floats ({} bytes)",
-        model_data.len(),
-        model_data.len() * 4
-    );
+    let model_data = registry
+        .model_data
+        .iter()
+        .flat_map(|vertex| {
+            [
+                vertex.position[0],
+                vertex.position[1],
+                vertex.position[2],
+                vertex.uv[0],
+                vertex.uv[1],
+                vertex.normal[0],
+                vertex.normal[1],
+                vertex.normal[2],
+            ]
+        })
+        .flat_map(f32::to_le_bytes)
+        .collect::<Vec<u8>>();
 
-    // Convert Vec<f32> to bytes
-    let buffer_bytes: Vec<u8> = model_data.iter().flat_map(|f| f.to_le_bytes()).collect();
-
-    let storage_buffer = ShaderStorageBuffer::new(&buffer_bytes, RenderAssetUsages::RENDER_WORLD);
+    let storage_buffer = ShaderStorageBuffer::new(&model_data, RenderAssetUsages::RENDER_WORLD);
     let buffer_handle = buffers.add(storage_buffer);
 
     let material = materials.add(ChunkMaterial {

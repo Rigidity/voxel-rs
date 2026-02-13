@@ -52,10 +52,7 @@ pub fn generate_mesh(
                     .get_block(world_pos - IVec3::Y)
                     .is_none_or(is_transparent);
 
-                let cube_model_id = registry
-                    .model_registry
-                    .get_model_id("cube")
-                    .expect("Cube model not registered");
+                let cube_model_id = registry.model_id("cube");
 
                 let x = x as u32;
                 let y = y as u32;
