@@ -54,4 +54,8 @@ impl BlockType for RockSlab {
             }),
         }
     }
+
+    fn occludes_vertex_shading(&self, _face: BlockFace, _data: PackedData) -> bool {
+        false
+    }
 }

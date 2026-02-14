@@ -32,6 +32,11 @@ pub trait BlockType: 'static + Send + Sync {
             is_transparent: false,
         })
     }
+
+    fn occludes_vertex_shading(&self, face: BlockFace, data: PackedData) -> bool {
+        self.face_rect(face, data)
+            .is_some_and(|face_rect| !face_rect.is_transparent)
+    }
 }
 
 pub struct FaceRect {
@@ -40,88 +45,20 @@ pub struct FaceRect {
 }
 
 pub fn render_block_with_model(ctx: &mut RenderContext, model_id: ModelId, double_sided: bool) {
-    let visible_faces = calculate_visible_faces(ctx);
+    for face in BlockFace::ALL {
+        let model_index = ctx.registry.model_offset(model_id);
+        let start = model_index + face.model_vertex_start();
 
-    // Front face (+Z)
-    if visible_faces.front {
-        ctx.add_face(BlockFace::Front, model_id, double_sided);
+        let surface = BlockSurface {
+            cull_face: Some(face),
+            texture_face: face,
+            vertex_indices: [start, start + 1, start + 2, start + 3],
+            normal: face.normal(),
+            shading_offsets: face.shading_offsets(),
+        };
+
+        ctx.add_surface(surface, double_sided);
     }
-
-    // Back face (-Z)
-    if visible_faces.back {
-        ctx.add_face(BlockFace::Back, model_id, double_sided);
-    }
-
-    // Left face (-X)
-    if visible_faces.left {
-        ctx.add_face(BlockFace::Left, model_id, double_sided);
-    }
-
-    // Right face (+X)
-    if visible_faces.right {
-        ctx.add_face(BlockFace::Right, model_id, double_sided);
-    }
-
-    // Top face (+Y)
-    if visible_faces.top {
-        ctx.add_face(BlockFace::Top, model_id, double_sided);
-    }
-
-    // Bottom face (-Y)
-    if visible_faces.bottom {
-        ctx.add_face(BlockFace::Bottom, model_id, double_sided);
-    }
-}
-
-pub fn calculate_visible_faces(ctx: &RenderContext) -> VisibleFaces {
-    VisibleFaces {
-        left: ctx
-            .data
-            .get_block(ctx.world_pos - IVec3::X)
-            .is_none_or(|neighboring_block| {
-                !ctx.is_face_obscured(ctx.block, neighboring_block, BlockFace::Left)
-            }),
-        right: ctx
-            .data
-            .get_block(ctx.world_pos + IVec3::X)
-            .is_none_or(|neighboring_block| {
-                !ctx.is_face_obscured(ctx.block, neighboring_block, BlockFace::Right)
-            }),
-        front: ctx
-            .data
-            .get_block(ctx.world_pos + IVec3::Z)
-            .is_none_or(|neighboring_block| {
-                !ctx.is_face_obscured(ctx.block, neighboring_block, BlockFace::Front)
-            }),
-        back: ctx
-            .data
-            .get_block(ctx.world_pos - IVec3::Z)
-            .is_none_or(|neighboring_block| {
-                !ctx.is_face_obscured(ctx.block, neighboring_block, BlockFace::Back)
-            }),
-        top: ctx
-            .data
-            .get_block(ctx.world_pos + IVec3::Y)
-            .is_none_or(|neighboring_block| {
-                !ctx.is_face_obscured(ctx.block, neighboring_block, BlockFace::Top)
-            }),
-        bottom: ctx
-            .data
-            .get_block(ctx.world_pos - IVec3::Y)
-            .is_none_or(|neighboring_block| {
-                !ctx.is_face_obscured(ctx.block, neighboring_block, BlockFace::Bottom)
-            }),
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct VisibleFaces {
-    pub left: bool,
-    pub right: bool,
-    pub front: bool,
-    pub back: bool,
-    pub top: bool,
-    pub bottom: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -132,6 +69,100 @@ pub enum BlockFace {
     Right,
     Front,
     Back,
+}
+
+impl BlockFace {
+    pub const ALL: [BlockFace; 6] = [
+        BlockFace::Front,
+        BlockFace::Back,
+        BlockFace::Left,
+        BlockFace::Right,
+        BlockFace::Top,
+        BlockFace::Bottom,
+    ];
+
+    pub fn normal(self) -> IVec3 {
+        match self {
+            BlockFace::Top => IVec3::Y,
+            BlockFace::Bottom => -IVec3::Y,
+            BlockFace::Left => -IVec3::X,
+            BlockFace::Right => IVec3::X,
+            BlockFace::Front => IVec3::Z,
+            BlockFace::Back => -IVec3::Z,
+        }
+    }
+
+    pub fn opposite(self) -> BlockFace {
+        match self {
+            BlockFace::Front => BlockFace::Back,
+            BlockFace::Back => BlockFace::Front,
+            BlockFace::Left => BlockFace::Right,
+            BlockFace::Right => BlockFace::Left,
+            BlockFace::Top => BlockFace::Bottom,
+            BlockFace::Bottom => BlockFace::Top,
+        }
+    }
+
+    pub fn model_vertex_start(self) -> u32 {
+        match self {
+            BlockFace::Front => 0,
+            BlockFace::Back => 4,
+            BlockFace::Left => 8,
+            BlockFace::Right => 12,
+            BlockFace::Top => 16,
+            BlockFace::Bottom => 20,
+        }
+    }
+
+    pub fn shading_offsets(self) -> [IVec3; 4] {
+        match self {
+            BlockFace::Front => [
+                IVec3::new(1, 1, 1),
+                IVec3::new(-1, 1, 1),
+                IVec3::new(-1, -1, 1),
+                IVec3::new(1, -1, 1),
+            ],
+            BlockFace::Back => [
+                IVec3::new(-1, 1, -1),
+                IVec3::new(1, 1, -1),
+                IVec3::new(1, -1, -1),
+                IVec3::new(-1, -1, -1),
+            ],
+            BlockFace::Left => [
+                IVec3::new(-1, 1, 1),
+                IVec3::new(-1, 1, -1),
+                IVec3::new(-1, -1, -1),
+                IVec3::new(-1, -1, 1),
+            ],
+            BlockFace::Right => [
+                IVec3::new(1, 1, -1),
+                IVec3::new(1, 1, 1),
+                IVec3::new(1, -1, 1),
+                IVec3::new(1, -1, -1),
+            ],
+            BlockFace::Top => [
+                IVec3::new(1, 1, 1),
+                IVec3::new(1, 1, -1),
+                IVec3::new(-1, 1, -1),
+                IVec3::new(-1, 1, 1),
+            ],
+            BlockFace::Bottom => [
+                IVec3::new(1, -1, -1),
+                IVec3::new(1, -1, 1),
+                IVec3::new(-1, -1, 1),
+                IVec3::new(-1, -1, -1),
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BlockSurface {
+    pub cull_face: Option<BlockFace>,
+    pub texture_face: BlockFace,
+    pub vertex_indices: [u32; 4],
+    pub normal: IVec3,
+    pub shading_offsets: [IVec3; 4],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -156,111 +187,48 @@ pub struct RenderContext<'a> {
 }
 
 impl RenderContext<'_> {
-    fn add_face(&mut self, face: BlockFace, model_id: ModelId, double_sided: bool) {
-        let texture_index = self.registry.texture_index(self.block, face);
+    pub fn is_face_visible(&self, face: BlockFace) -> bool {
+        self.data
+            .get_block(self.world_pos + face.normal())
+            .is_none_or(|neighboring_block| !self.is_face_obscured(self.block, neighboring_block, face))
+    }
 
-        // Check if this face is transparent
+    pub fn add_surface(&mut self, surface: BlockSurface, double_sided: bool) {
+        if let Some(cull_face) = surface.cull_face {
+            if !self.is_face_visible(cull_face) {
+                return;
+            }
+        }
+
+        let texture_index = self.registry.texture_index(self.block, surface.texture_face);
+
         let is_transparent = self
             .registry
             .block_type(self.block.id)
-            .face_rect(face, self.block.data)
+            .face_rect(surface.texture_face, self.block.data)
             .map(|rect| rect.is_transparent)
             .unwrap_or(false);
 
-        let model_index = self.registry.model_offset(model_id);
-
-        let base_index = model_index
-            + match face {
-                BlockFace::Front => 0,
-                BlockFace::Back => 4,
-                BlockFace::Left => 8,
-                BlockFace::Right => 12,
-                BlockFace::Top => 16,
-                BlockFace::Bottom => 20,
-            };
-
-        let vertex_indices = [base_index, base_index + 1, base_index + 2, base_index + 3];
-
         let index = self.mesh.index();
 
-        // Calculate AO for each vertex
-        let (normal, ao_offsets) = match face {
-            BlockFace::Front => (
-                IVec3::Z,
-                [
-                    IVec3::new(1, 1, 1),
-                    IVec3::new(-1, 1, 1),
-                    IVec3::new(-1, -1, 1),
-                    IVec3::new(1, -1, 1),
-                ],
-            ),
-            BlockFace::Back => (
-                -IVec3::Z,
-                [
-                    IVec3::new(-1, 1, -1),
-                    IVec3::new(1, 1, -1),
-                    IVec3::new(1, -1, -1),
-                    IVec3::new(-1, -1, -1),
-                ],
-            ),
-            BlockFace::Left => (
-                -IVec3::X,
-                [
-                    IVec3::new(-1, 1, 1),
-                    IVec3::new(-1, 1, -1),
-                    IVec3::new(-1, -1, -1),
-                    IVec3::new(-1, -1, 1),
-                ],
-            ),
-            BlockFace::Right => (
-                IVec3::X,
-                [
-                    IVec3::new(1, 1, -1),
-                    IVec3::new(1, 1, 1),
-                    IVec3::new(1, -1, 1),
-                    IVec3::new(1, -1, -1),
-                ],
-            ),
-            BlockFace::Top => (
-                IVec3::Y,
-                [
-                    IVec3::new(1, 1, 1),
-                    IVec3::new(1, 1, -1),
-                    IVec3::new(-1, 1, -1),
-                    IVec3::new(-1, 1, 1),
-                ],
-            ),
-            BlockFace::Bottom => (
-                -IVec3::Y,
-                [
-                    IVec3::new(1, -1, -1),
-                    IVec3::new(1, -1, 1),
-                    IVec3::new(-1, -1, 1),
-                    IVec3::new(-1, -1, -1),
-                ],
-            ),
-        };
-
-        let aos: [u32; 4] = [
-            self.calculate_ao(ao_offsets[0], normal),
-            self.calculate_ao(ao_offsets[1], normal),
-            self.calculate_ao(ao_offsets[2], normal),
-            self.calculate_ao(ao_offsets[3], normal),
+        let shading: [u32; 4] = [
+            self.sample_vertex_shading(surface.shading_offsets[0], surface.normal),
+            self.sample_vertex_shading(surface.shading_offsets[1], surface.normal),
+            self.sample_vertex_shading(surface.shading_offsets[2], surface.normal),
+            self.sample_vertex_shading(surface.shading_offsets[3], surface.normal),
         ];
 
-        // Add vertices
         for i in 0..4 {
             self.mesh.vertices.push(ChunkVertex::new(
                 self.local_pos,
-                vertex_indices[i],
-                aos[i],
+                surface.vertex_indices[i],
+                shading[i],
                 texture_index,
                 is_transparent,
             ));
         }
 
-        // Add indices with proper winding based on AO
-        if aos[0] + aos[2] < aos[1] + aos[3] {
+        if shading[0] + shading[2] < shading[1] + shading[3] {
             self.mesh.indices.extend_from_slice(&[
                 index,
                 index + 1,
@@ -269,7 +237,6 @@ impl RenderContext<'_> {
                 index + 2,
                 index + 3,
             ]);
-            // Add back face for transparent blocks
             if double_sided {
                 self.mesh.indices.extend_from_slice(&[
                     index + 3,
@@ -289,7 +256,6 @@ impl RenderContext<'_> {
                 index + 3,
                 index,
             ]);
-            // Add back face for transparent blocks
             if double_sided {
                 self.mesh.indices.extend_from_slice(&[
                     index,
@@ -303,7 +269,7 @@ impl RenderContext<'_> {
         }
     }
 
-    fn calculate_ao(&self, offset: IVec3, normal: IVec3) -> u32 {
+    fn sample_vertex_shading(&self, offset: IVec3, normal: IVec3) -> u32 {
         let (axis1, axis2) = if normal.x.abs() == 1 {
             (IVec3::Y, IVec3::Z)
         } else if normal.y.abs() == 1 {
@@ -319,7 +285,7 @@ impl RenderContext<'_> {
         let side2_pos = self.world_pos + normal + axis2 * side2_dir;
         let corner_pos = self.world_pos + normal + axis1 * side1_dir + axis2 * side2_dir;
 
-        let get_ao_face = |neighbor_pos: IVec3| -> BlockFace {
+        let get_neighbor_face_toward_block = |neighbor_pos: IVec3| -> BlockFace {
             let diff = neighbor_pos - self.world_pos;
             if diff.x > 0 {
                 BlockFace::Left
@@ -337,25 +303,22 @@ impl RenderContext<'_> {
         };
 
         let side1 = self.data.get_block(side1_pos).is_some_and(|block| {
-            let face = get_ao_face(side1_pos);
+            let face = get_neighbor_face_toward_block(side1_pos);
             self.registry
                 .block_type(block.id)
-                .face_rect(face, block.data)
-                .is_some()
+                .occludes_vertex_shading(face, block.data)
         });
         let side2 = self.data.get_block(side2_pos).is_some_and(|block| {
-            let face = get_ao_face(side2_pos);
+            let face = get_neighbor_face_toward_block(side2_pos);
             self.registry
                 .block_type(block.id)
-                .face_rect(face, block.data)
-                .is_some()
+                .occludes_vertex_shading(face, block.data)
         });
         let corner = self.data.get_block(corner_pos).is_some_and(|block| {
-            let face = get_ao_face(corner_pos);
+            let face = get_neighbor_face_toward_block(corner_pos);
             self.registry
                 .block_type(block.id)
-                .face_rect(face, block.data)
-                .is_some()
+                .occludes_vertex_shading(face, block.data)
         });
 
         let occlusion = if side1 && side2 {
@@ -373,14 +336,7 @@ impl RenderContext<'_> {
         neighboring_block: Block,
         render_face: BlockFace,
     ) -> bool {
-        let neighboring_face = match render_face {
-            BlockFace::Front => BlockFace::Back,
-            BlockFace::Back => BlockFace::Front,
-            BlockFace::Left => BlockFace::Right,
-            BlockFace::Right => BlockFace::Left,
-            BlockFace::Top => BlockFace::Bottom,
-            BlockFace::Bottom => BlockFace::Top,
-        };
+        let neighboring_face = render_face.opposite();
 
         let render_rect = self
             .registry
