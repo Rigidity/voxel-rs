@@ -159,6 +159,14 @@ impl RenderContext<'_> {
     fn add_face(&mut self, face: BlockFace, model_id: ModelId, double_sided: bool) {
         let texture_index = self.registry.texture_index(self.block, face);
 
+        // Check if this face is transparent
+        let is_transparent = self
+            .registry
+            .block_type(self.block.id)
+            .face_rect(face, self.block.data)
+            .map(|rect| rect.is_transparent)
+            .unwrap_or(false);
+
         let model_index = self.registry.model_offset(model_id);
 
         let base_index = model_index
@@ -247,6 +255,7 @@ impl RenderContext<'_> {
                 vertex_indices[i],
                 aos[i],
                 texture_index,
+                is_transparent,
             ));
         }
 
@@ -384,7 +393,7 @@ impl RenderContext<'_> {
             .face_rect(neighboring_face, neighboring_block.data);
 
         if let (Some(render_rect), Some(neighboring_rect)) = (render_rect, neighboring_rect) {
-            if neighboring_rect.is_transparent && !render_rect.is_transparent {
+            if render_rect.is_transparent != neighboring_rect.is_transparent {
                 return false;
             }
 

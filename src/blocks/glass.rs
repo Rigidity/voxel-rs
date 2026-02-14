@@ -1,7 +1,7 @@
 use bevy::math::Rect;
 
 use crate::{
-    Block, BlockFace, BlockType, FaceRect, PackedData, Registry, RenderContext,
+    Block, BlockFace, BlockType, FaceRect, ModelId, PackedData, Registry, RenderContext,
     render_block_with_model,
 };
 
@@ -10,6 +10,10 @@ pub struct Glass;
 impl BlockType for Glass {
     fn unique_name(&self) -> String {
         "glass".to_string()
+    }
+
+    fn model_id(&self, registry: &Registry, _data: PackedData) -> ModelId {
+        registry.model_id("cube")
     }
 
     fn register(&self, registry: &mut Registry) {

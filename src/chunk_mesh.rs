@@ -94,15 +94,17 @@ impl ChunkVertex {
     /// - Position X: 5 bits (bits 25-29)
     /// - Position Y: 5 bits (bits 20-24)
     /// - Position Z: 5 bits (bits 15-19)
-    /// - Vertex Index: 13 bits (bits 2-14)
-    /// - AO: 2 bits (bits 0-1)
-    pub fn new(local_pos: USizeVec3, vertex_index: u32, ao: u32, texture_index: u32) -> Self {
+    /// - Vertex Index: 12 bits (bits 3-14)
+    /// - AO: 2 bits (bits 1-2)
+    /// - Transparent: 1 bit (bit 0)
+    pub fn new(local_pos: USizeVec3, vertex_index: u32, ao: u32, texture_index: u32, is_transparent: bool) -> Self {
         Self {
             data: ((local_pos.x as u32) << 25)
                 | ((local_pos.y as u32) << 20)
                 | ((local_pos.z as u32) << 15)
-                | (vertex_index << 2)
-                | ao,
+                | (vertex_index << 3)
+                | (ao << 1)
+                | (is_transparent as u32),
             texture_index,
         }
     }

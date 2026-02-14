@@ -36,8 +36,9 @@ fn vs_main(
     let pos_x = (input.data >> 25) & 0x1F;  // 5 bits
     let pos_y = (input.data >> 20) & 0x1F;  // 5 bits
     let pos_z = (input.data >> 15) & 0x1F;  // 5 bits
-    let vertex_idx = (input.data >> 2) & 0x1FFF;  // 13 bits
-    let ao = input.data & 0x03;  // 2 bits
+    let vertex_idx = (input.data >> 3) & 0xFFF;  // 12 bits
+    let ao = (input.data >> 1) & 0x03;  // 2 bits
+    let is_transparent = input.data & 0x01;  // 1 bit
 
     // Calculate offset into model buffer
     // Each model starts at a different offset, but for now we can calculate directly
@@ -69,6 +70,12 @@ fn vs_main(
     let ao_value = f32(ao) / 3.0;
     out.ao = mix(1.0, ao_value, ao_factor);
     out.clip_position = mesh_position_local_to_clip(get_world_from_local(input.instance_index), final_position);
+    
+    // Apply depth offset for transparent faces to prevent z-fighting
+    if (is_transparent != 0u) {
+        out.clip_position.z += 0.0001;
+    }
+    
     out.texture_index = input.texture_index;
     return out;
 }
