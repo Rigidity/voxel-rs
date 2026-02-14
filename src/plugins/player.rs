@@ -16,7 +16,7 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-const COYOTE_TIME: f32 = 0.075;
+const COYOTE_TIME: f32 = 0.025;
 
 #[derive(Component)]
 pub struct Player {
@@ -214,15 +214,11 @@ fn update_player(
             && let Some(result) =
                 voxel_raycast(camera_global.translation(), forward_with_pitch, 5.0, &world)
         {
-            let rock_slab = shared_registry.0.block_id("rock_slab");
-            let shale = shared_registry.0.material_id("shale");
+            let glass = shared_registry.0.block_id("glass");
 
             world.set_block(
                 result.previous_position,
-                Some(Block::new(
-                    rock_slab,
-                    PackedData::builder().with_material(shale).build(),
-                )),
+                Some(Block::new(glass, PackedData::builder().build())),
             );
         }
     }

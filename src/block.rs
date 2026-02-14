@@ -26,9 +26,17 @@ pub trait BlockType: 'static + Send + Sync {
         render_block_with_model(ctx, self.model_id(ctx.registry, ctx.block.data), false);
     }
 
-    fn opaque_face_rect(&self, _face: BlockFace, _data: PackedData) -> Option<Rect> {
-        Some(Rect::new(0.0, 0.0, 1.0, 1.0))
+    fn face_rect(&self, _face: BlockFace, _data: PackedData) -> Option<FaceRect> {
+        Some(FaceRect {
+            rect: Rect::new(0.0, 0.0, 1.0, 1.0),
+            is_transparent: false,
+        })
     }
+}
+
+pub struct FaceRect {
+    pub rect: Rect,
+    pub is_transparent: bool,
 }
 
 pub fn render_block_with_model(ctx: &mut RenderContext, model_id: ModelId, double_sided: bool) {
@@ -323,21 +331,21 @@ impl RenderContext<'_> {
             let face = get_ao_face(side1_pos);
             self.registry
                 .block_type(block.id)
-                .opaque_face_rect(face, block.data)
+                .face_rect(face, block.data)
                 .is_some()
         });
         let side2 = self.data.get_block(side2_pos).is_some_and(|block| {
             let face = get_ao_face(side2_pos);
             self.registry
                 .block_type(block.id)
-                .opaque_face_rect(face, block.data)
+                .face_rect(face, block.data)
                 .is_some()
         });
         let corner = self.data.get_block(corner_pos).is_some_and(|block| {
             let face = get_ao_face(corner_pos);
             self.registry
                 .block_type(block.id)
-                .opaque_face_rect(face, block.data)
+                .face_rect(face, block.data)
                 .is_some()
         });
 
@@ -368,15 +376,19 @@ impl RenderContext<'_> {
         let render_rect = self
             .registry
             .block_type(render_block.id)
-            .opaque_face_rect(render_face, render_block.data);
+            .face_rect(render_face, render_block.data);
 
         let neighboring_rect = self
             .registry
             .block_type(neighboring_block.id)
-            .opaque_face_rect(neighboring_face, neighboring_block.data);
+            .face_rect(neighboring_face, neighboring_block.data);
 
         if let (Some(render_rect), Some(neighboring_rect)) = (render_rect, neighboring_rect) {
-            is_face_obscured(render_rect, neighboring_rect)
+            if neighboring_rect.is_transparent && !render_rect.is_transparent {
+                return false;
+            }
+
+            is_face_obscured(render_rect.rect, neighboring_rect.rect)
         } else {
             false
         }

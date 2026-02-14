@@ -1,7 +1,8 @@
 use bevy::math::Rect;
 
 use crate::{
-    Block, BlockFace, BlockType, PackedData, Registry, RenderContext, render_block_with_model,
+    Block, BlockFace, BlockType, FaceRect, PackedData, Registry, RenderContext,
+    render_block_with_model,
 };
 
 pub struct Glass;
@@ -24,8 +25,11 @@ impl BlockType for Glass {
         );
     }
 
-    fn opaque_face_rect(&self, _face: BlockFace, _data: PackedData) -> Option<Rect> {
-        None
+    fn face_rect(&self, _face: BlockFace, _data: PackedData) -> Option<FaceRect> {
+        Some(FaceRect {
+            rect: Rect::new(0.0, 0.0, 1.0, 1.0),
+            is_transparent: true,
+        })
     }
 
     fn render(&self, ctx: &mut RenderContext) {
