@@ -23,10 +23,18 @@ pub struct Player {
     grounded_timer: f32,
     pitch: f32,
     yaw: f32,
+    selected_block: SelectedBlock,
 }
 
 #[derive(Component)]
 pub struct PlayerCamera;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SelectedBlock {
+    Rock,
+    RockSlab,
+    Glass,
+}
 
 fn setup_player(mut commands: Commands) {
     commands
@@ -35,6 +43,7 @@ fn setup_player(mut commands: Commands) {
                 grounded_timer: 0.0,
                 pitch: 0.0,
                 yaw: 0.0,
+                selected_block: SelectedBlock::Rock,
             },
             Aabb::new(Vec3::ZERO, Vec3::new(0.6, 1.8, 0.6)),
             CollisionNormals::default(),
@@ -187,6 +196,18 @@ fn update_player(
         }
     }
 
+    if input.just_pressed(KeyCode::Digit1) {
+        player.selected_block = SelectedBlock::Rock;
+    }
+
+    if input.just_pressed(KeyCode::Digit2) {
+        player.selected_block = SelectedBlock::RockSlab;
+    }
+
+    if input.just_pressed(KeyCode::Digit3) {
+        player.selected_block = SelectedBlock::Glass;
+    }
+
     if cursor_options.grab_mode == CursorGrabMode::Locked {
         for event in mouse_motion_reader.read() {
             let sensitivity = 0.0025;
@@ -215,16 +236,23 @@ fn update_player(
             && let Some(result) =
                 voxel_raycast(camera_global.translation(), forward_with_pitch, 5.0, &world)
         {
-            let rock_slab = shared_registry.0.block_id("rock_slab");
             let shale = shared_registry.0.material_id("shale");
+            let block = match player.selected_block {
+                SelectedBlock::Rock => {
+                    let rock = shared_registry.0.block_id("rock");
+                    Block::new(rock, PackedData::builder().with_material(shale).build())
+                }
+                SelectedBlock::RockSlab => {
+                    let rock_slab = shared_registry.0.block_id("rock_slab");
+                    Block::new(rock_slab, PackedData::builder().with_material(shale).build())
+                }
+                SelectedBlock::Glass => {
+                    let glass = shared_registry.0.block_id("glass");
+                    Block::new(glass, PackedData::builder().build())
+                }
+            };
 
-            world.set_block(
-                result.previous_position,
-                Some(Block::new(
-                    rock_slab,
-                    PackedData::builder().with_material(shale).build(),
-                )),
-            );
+            world.set_block(result.previous_position, Some(block));
         }
     }
 
