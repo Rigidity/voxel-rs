@@ -13,8 +13,8 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Block, BlockFace, BlockType, ChunkMaterial, Cube, Glass, Loam, LushGrass, Material, Model,
-    ModelVertex, Oak, Rock, RockSlab, Shale, Slab, Soil, Wood,
+    Block, BlockFace, BlockType, ChunkMaterial, Cube, Glass, Glowstone, Loam, LushGrass, Material,
+    Model, ModelVertex, Oak, Rock, RockSlab, Shale, Slab, Soil, Wood,
 };
 
 pub struct RegistryPlugin;
@@ -161,6 +161,7 @@ fn setup_registry(
     registry.register_block(Soil);
     registry.register_block(Wood);
     registry.register_block(Glass);
+    registry.register_block(Glowstone);
 
     log::info!(
         "Generating an array of {} textures",
@@ -215,8 +216,11 @@ fn setup_registry(
 
     let material = materials.add(ChunkMaterial {
         array_texture: texture_handle.clone(),
-        ao_factor: 0.6,
         model_buffer: buffer_handle,
+        sun_direction: Vec3::new(0.5, 1.0, 0.3).normalize(),
+        sun_strength: 0.5,
+        ambient: 0.4,
+        sky_brightness: 1.0,
     });
 
     commands.insert_resource(SharedRegistry(Arc::new(registry)));
