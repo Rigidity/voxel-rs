@@ -37,6 +37,7 @@ fn setup_player(mut commands: Commands) {
                 yaw: 0.0,
             },
             Aabb::new(Vec3::ZERO, Vec3::new(0.6, 1.8, 0.6)),
+            CollisionNormals::default(),
             Velocity(Vec3::ZERO),
             Transform::from_xyz(0.0, 50.0, 0.0),
             Visibility::Visible,
