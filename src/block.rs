@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Aabb, BlockId, ChunkMeshBuilder, ChunkVertex, ModelId, PackedData, Registry, RelevantChunks,
+    RelevantLights,
 };
 
 pub trait BlockType: 'static + Send + Sync {
@@ -31,6 +32,10 @@ pub trait BlockType: 'static + Send + Sync {
             rect: Rect::new(0.0, 0.0, 1.0, 1.0),
             is_transparent: false,
         })
+    }
+
+    fn light_emission(&self, _data: PackedData) -> u8 {
+        0
     }
 }
 
@@ -148,6 +153,7 @@ impl Block {
 
 pub struct RenderContext<'a> {
     pub data: &'a RelevantChunks,
+    pub lights: &'a RelevantLights,
     pub registry: &'a Registry,
     pub mesh: &'a mut ChunkMeshBuilder,
     pub block: Block,
@@ -184,7 +190,7 @@ impl RenderContext<'_> {
         let index = self.mesh.index();
 
         // Calculate AO for each vertex
-        let (normal, ao_offsets) = match face {
+        let (normal, corner_offsets) = match face {
             BlockFace::Front => (
                 IVec3::Z,
                 [
@@ -241,11 +247,11 @@ impl RenderContext<'_> {
             ),
         };
 
-        let aos: [u32; 4] = [
-            self.calculate_ao(ao_offsets[0], normal),
-            self.calculate_ao(ao_offsets[1], normal),
-            self.calculate_ao(ao_offsets[2], normal),
-            self.calculate_ao(ao_offsets[3], normal),
+        let vertex_lights: [(u32, u32); 4] = [
+            self.calculate_smooth_light(corner_offsets[0], normal),
+            self.calculate_smooth_light(corner_offsets[1], normal),
+            self.calculate_smooth_light(corner_offsets[2], normal),
+            self.calculate_smooth_light(corner_offsets[3], normal),
         ];
 
         // Add vertices
@@ -253,14 +259,16 @@ impl RenderContext<'_> {
             self.mesh.vertices.push(ChunkVertex::new(
                 self.local_pos,
                 vertex_indices[i],
-                aos[i],
                 texture_index,
                 is_transparent,
+                vertex_lights[i].0,
+                vertex_lights[i].1,
             ));
         }
 
-        // Add indices with proper winding based on AO
-        if aos[0] + aos[2] < aos[1] + aos[3] {
+        // Add indices with proper winding based on light diagonal
+        let light_sum = |i: usize| vertex_lights[i].0 + vertex_lights[i].1;
+        if light_sum(0) + light_sum(2) < light_sum(1) + light_sum(3) {
             self.mesh.indices.extend_from_slice(&[
                 index,
                 index + 1,
@@ -303,7 +311,9 @@ impl RenderContext<'_> {
         }
     }
 
-    fn calculate_ao(&self, offset: IVec3, normal: IVec3) -> u32 {
+    /// Calculate smooth lighting for a vertex by averaging 4 neighboring light values.
+    /// Uses the same offset/normal pattern as AO for consistency.
+    fn calculate_smooth_light(&self, offset: IVec3, normal: IVec3) -> (u32, u32) {
         let (axis1, axis2) = if normal.x.abs() == 1 {
             (IVec3::Y, IVec3::Z)
         } else if normal.y.abs() == 1 {
@@ -315,56 +325,40 @@ impl RenderContext<'_> {
         let side1_dir = offset.dot(axis1).signum();
         let side2_dir = offset.dot(axis2).signum();
 
-        let side1_pos = self.world_pos + normal + axis1 * side1_dir;
-        let side2_pos = self.world_pos + normal + axis2 * side2_dir;
-        let corner_pos = self.world_pos + normal + axis1 * side1_dir + axis2 * side2_dir;
+        // Sample light from the 4 positions around this vertex corner
+        let center_pos = self.world_pos + normal;
+        let side1_pos = center_pos + axis1 * side1_dir;
+        let side2_pos = center_pos + axis2 * side2_dir;
+        let corner_pos = center_pos + axis1 * side1_dir + axis2 * side2_dir;
 
-        let get_ao_face = |neighbor_pos: IVec3| -> BlockFace {
-            let diff = neighbor_pos - self.world_pos;
-            if diff.x > 0 {
-                BlockFace::Left
-            } else if diff.x < 0 {
-                BlockFace::Right
-            } else if diff.y > 0 {
-                BlockFace::Bottom
-            } else if diff.y < 0 {
-                BlockFace::Top
-            } else if diff.z > 0 {
-                BlockFace::Back
-            } else {
-                BlockFace::Front
+        let positions = [center_pos, side1_pos, side2_pos, corner_pos];
+
+        let mut total_sky: u32 = 0;
+        let mut total_block: u32 = 0;
+        let mut count: u32 = 0;
+
+        for pos in &positions {
+            // Only sample from non-opaque positions
+            let is_opaque = self.data.get_block(*pos).is_some_and(|block| {
+                self.registry
+                    .block_type(block.id)
+                    .face_rect(BlockFace::Top, block.data)
+                    .is_some_and(|r| !r.is_transparent)
+            });
+
+            if !is_opaque {
+                let (sky, block) = self.lights.get_light(*pos);
+                total_sky += sky as u32;
+                total_block += block as u32;
+                count += 1;
             }
-        };
+        }
 
-        let side1 = self.data.get_block(side1_pos).is_some_and(|block| {
-            let face = get_ao_face(side1_pos);
-            self.registry
-                .block_type(block.id)
-                .face_rect(face, block.data)
-                .is_some()
-        });
-        let side2 = self.data.get_block(side2_pos).is_some_and(|block| {
-            let face = get_ao_face(side2_pos);
-            self.registry
-                .block_type(block.id)
-                .face_rect(face, block.data)
-                .is_some()
-        });
-        let corner = self.data.get_block(corner_pos).is_some_and(|block| {
-            let face = get_ao_face(corner_pos);
-            self.registry
-                .block_type(block.id)
-                .face_rect(face, block.data)
-                .is_some()
-        });
-
-        let occlusion = if side1 && side2 {
-            3
+        if count == 0 {
+            (0, 0)
         } else {
-            (side1 as u32) + (side2 as u32) + (corner as u32)
-        };
-
-        3 - occlusion
+            (total_sky / count, total_block / count)
+        }
     }
 
     fn is_face_obscured(

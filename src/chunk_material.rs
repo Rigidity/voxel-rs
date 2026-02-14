@@ -14,10 +14,16 @@ pub struct ChunkMaterial {
     #[texture(0, dimension = "2d_array")]
     #[sampler(1)]
     pub array_texture: Handle<Image>,
-    #[uniform(2)]
-    pub ao_factor: f32,
-    #[storage(3, read_only)]
+    #[storage(2, read_only)]
     pub model_buffer: Handle<ShaderStorageBuffer>,
+    #[uniform(3)]
+    pub sun_direction: Vec3,
+    #[uniform(4)]
+    pub sun_strength: f32,
+    #[uniform(5)]
+    pub ambient: f32,
+    #[uniform(6)]
+    pub sky_brightness: f32,
 }
 
 pub const ATTRIBUTE_PACKED_DATA: MeshVertexAttribute =
@@ -25,6 +31,9 @@ pub const ATTRIBUTE_PACKED_DATA: MeshVertexAttribute =
 
 pub const ATTRIBUTE_TEXTURE_INDEX: MeshVertexAttribute =
     MeshVertexAttribute::new("TextureIndex", 47198479, VertexFormat::Uint32);
+
+pub const ATTRIBUTE_LIGHT_DATA: MeshVertexAttribute =
+    MeshVertexAttribute::new("LightData", 47198480, VertexFormat::Uint32);
 
 impl Material for ChunkMaterial {
     fn vertex_shader() -> ShaderRef {
@@ -48,6 +57,7 @@ impl Material for ChunkMaterial {
         let vertex_layout = layout.0.get_layout(&[
             ATTRIBUTE_PACKED_DATA.at_shader_location(0),
             ATTRIBUTE_TEXTURE_INDEX.at_shader_location(1),
+            ATTRIBUTE_LIGHT_DATA.at_shader_location(2),
         ])?;
         descriptor.vertex.buffers = vec![vertex_layout];
         Ok(())
