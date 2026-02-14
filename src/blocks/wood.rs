@@ -1,4 +1,4 @@
-use crate::{Block, BlockFace, BlockType, PackedData, Registry, color_image};
+use crate::{Block, BlockFace, BlockType, PackedData, Registry, RenderContext, color_image};
 
 pub struct Wood;
 
@@ -51,21 +51,31 @@ impl BlockType for Wood {
         }
     }
 
-    fn face_data(&self, face: BlockFace, data: PackedData) -> PackedData {
-        let mut data = data.decode();
-
+    fn render(&self, ctx: &mut RenderContext) {
+        let mut data = ctx.block.data.decode();
         let material = data.take_material();
 
-        if matches!(face, BlockFace::Top | BlockFace::Bottom) {
-            return PackedData::builder()
-                .with_bool(true)
-                .with_material(material)
-                .build();
-        }
-
-        PackedData::builder()
+        let top_data = PackedData::builder()
+            .with_bool(true)
+            .with_material(material)
+            .build();
+        let side_data = PackedData::builder()
             .with_bool(false)
             .with_material(material)
-            .build()
+            .build();
+
+        let top_texture = ctx.texture_index_for_data(top_data);
+        let side_texture = ctx.texture_index_for_data(side_data);
+        let model_id = self.model_id(ctx.registry, ctx.block.data);
+
+        for face in BlockFace::ALL {
+            let texture = if matches!(face, BlockFace::Top | BlockFace::Bottom) {
+                top_texture
+            } else {
+                side_texture
+            };
+
+            ctx.add_model_face(model_id, face, texture, false);
+        }
     }
 }

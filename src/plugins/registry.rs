@@ -13,7 +13,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Block, BlockFace, BlockType, ChunkMaterial, Cube, Glass, Loam, LushGrass, Material, Model,
+    Block, BlockType, ChunkMaterial, Cube, Glass, Loam, LushGrass, Material, Model,
     ModelVertex, Oak, Rock, RockSlab, Shale, Slab, Soil, Wood,
 };
 
@@ -126,9 +126,8 @@ impl Registry {
         self.block_texture_indices.insert(block, texture_index);
     }
 
-    pub fn texture_index(&self, block: Block, face: BlockFace) -> u32 {
-        let data = self.block_type(block.id).face_data(face, block.data);
-        self.block_texture_indices[&Block::new(block.id, data)]
+    pub fn texture_index(&self, block: Block) -> u32 {
+        self.block_texture_indices[&block]
     }
 
     pub fn add_vertex(&mut self, vertex: ModelVertex) {

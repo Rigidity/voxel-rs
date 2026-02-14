@@ -1,4 +1,6 @@
-use crate::{Block, BlockFace, BlockType, PackedData, Registry, color_image, overlay_image};
+use crate::{
+    Block, BlockFace, BlockType, PackedData, Registry, RenderContext, color_image, overlay_image,
+};
 
 pub struct Soil;
 
@@ -85,38 +87,65 @@ impl BlockType for Soil {
         }
     }
 
-    fn face_data(&self, face: BlockFace, data: PackedData) -> PackedData {
+    fn render(&self, ctx: &mut RenderContext) {
+        let model_id = self.model_id(ctx.registry, ctx.block.data);
+
+        let (top_texture, bottom_texture, side_texture) = self.texture_set(ctx, ctx.block.data);
+
+        for face in BlockFace::ALL {
+            let texture = match face {
+                BlockFace::Top => top_texture,
+                BlockFace::Bottom => bottom_texture,
+                BlockFace::Front | BlockFace::Back | BlockFace::Left | BlockFace::Right => {
+                    side_texture
+                }
+            };
+
+            ctx.add_model_face(model_id, face, texture, false);
+        }
+    }
+}
+
+impl Soil {
+    fn texture_set(&self, ctx: &RenderContext, data: PackedData) -> (u32, u32, u32) {
         let mut data = data.decode();
 
         let material = data.take_material();
         let is_grass = data.take_bool();
 
         if !is_grass {
-            return PackedData::builder()
+            let texture_data = PackedData::builder()
                 .with_bool(false)
                 .with_material(material)
                 .with_bool(false)
                 .build();
+
+            let texture = ctx.texture_index_for_data(texture_data);
+
+            return (texture, texture, texture);
         }
 
         let grass_material = data.take_material();
+        let top = PackedData::builder()
+            .with_bool(true)
+            .with_material(grass_material)
+            .build();
+        let bottom = PackedData::builder()
+            .with_bool(false)
+            .with_material(material)
+            .with_bool(false)
+            .build();
+        let side = PackedData::builder()
+            .with_bool(false)
+            .with_material(material)
+            .with_bool(true)
+            .with_material(grass_material)
+            .build();
 
-        match face {
-            BlockFace::Top => PackedData::builder()
-                .with_bool(true)
-                .with_material(grass_material)
-                .build(),
-            BlockFace::Bottom => PackedData::builder()
-                .with_bool(false)
-                .with_material(material)
-                .with_bool(false)
-                .build(),
-            _ => PackedData::builder()
-                .with_bool(false)
-                .with_material(material)
-                .with_bool(true)
-                .with_material(grass_material)
-                .build(),
-        }
+        (
+            ctx.texture_index_for_data(top),
+            ctx.texture_index_for_data(bottom),
+            ctx.texture_index_for_data(side),
+        )
     }
 }

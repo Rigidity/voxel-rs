@@ -14,10 +14,6 @@ pub trait BlockType: 'static + Send + Sync {
 
     fn register(&self, registry: &mut Registry);
 
-    fn face_data(&self, _face: BlockFace, data: PackedData) -> PackedData {
-        data
-    }
-
     fn model_id(&self, registry: &Registry, _data: PackedData) -> ModelId {
         registry.model_id("cube")
     }
@@ -45,19 +41,10 @@ pub struct FaceRect {
 }
 
 pub fn render_block_with_model(ctx: &mut RenderContext, model_id: ModelId, double_sided: bool) {
+    let texture_index = ctx.texture_index(ctx.block);
+
     for face in BlockFace::ALL {
-        let model_index = ctx.registry.model_offset(model_id);
-        let start = model_index + face.model_vertex_start();
-
-        let surface = BlockSurface {
-            cull_face: Some(face),
-            texture_face: face,
-            vertex_indices: [start, start + 1, start + 2, start + 3],
-            normal: face.normal(),
-            shading_offsets: face.shading_offsets(),
-        };
-
-        ctx.add_surface(surface, double_sided);
+        ctx.add_model_face(model_id, face, texture_index, double_sided);
     }
 }
 
@@ -159,7 +146,6 @@ impl BlockFace {
 #[derive(Debug, Clone, Copy)]
 pub struct BlockSurface {
     pub cull_face: Option<BlockFace>,
-    pub texture_face: BlockFace,
     pub vertex_indices: [u32; 4],
     pub normal: IVec3,
     pub shading_offsets: [IVec3; 4],
@@ -187,27 +173,58 @@ pub struct RenderContext<'a> {
 }
 
 impl RenderContext<'_> {
+    pub fn texture_index(&self, block: Block) -> u32 {
+        self.registry.texture_index(block)
+    }
+
+    pub fn texture_index_for_data(&self, data: PackedData) -> u32 {
+        self.texture_index(Block::new(self.block.id, data))
+    }
+
+    pub fn add_model_face(
+        &mut self,
+        model_id: ModelId,
+        face: BlockFace,
+        texture_index: u32,
+        double_sided: bool,
+    ) {
+        let model_index = self.registry.model_offset(model_id);
+        let start = model_index + face.model_vertex_start();
+        let surface = BlockSurface {
+            cull_face: Some(face),
+            vertex_indices: [start, start + 1, start + 2, start + 3],
+            normal: face.normal(),
+            shading_offsets: face.shading_offsets(),
+        };
+
+        let is_transparent = self
+            .registry
+            .block_type(self.block.id)
+            .face_rect(face, self.block.data)
+            .map(|rect| rect.is_transparent)
+            .unwrap_or(false);
+
+        self.add_surface(surface, texture_index, is_transparent, double_sided);
+    }
+
     pub fn is_face_visible(&self, face: BlockFace) -> bool {
         self.data
             .get_block(self.world_pos + face.normal())
             .is_none_or(|neighboring_block| !self.is_face_obscured(self.block, neighboring_block, face))
     }
 
-    pub fn add_surface(&mut self, surface: BlockSurface, double_sided: bool) {
+    pub fn add_surface(
+        &mut self,
+        surface: BlockSurface,
+        texture_index: u32,
+        is_transparent: bool,
+        double_sided: bool,
+    ) {
         if let Some(cull_face) = surface.cull_face {
             if !self.is_face_visible(cull_face) {
                 return;
             }
         }
-
-        let texture_index = self.registry.texture_index(self.block, surface.texture_face);
-
-        let is_transparent = self
-            .registry
-            .block_type(self.block.id)
-            .face_rect(surface.texture_face, self.block.data)
-            .map(|rect| rect.is_transparent)
-            .unwrap_or(false);
 
         let index = self.mesh.index();
 
