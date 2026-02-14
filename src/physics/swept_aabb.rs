@@ -6,80 +6,80 @@ pub struct Collision {
     pub normal: Vec3,
 }
 
-pub fn swept_aabb(a: Vec3, ah: Vec3, b: Vec3, bh: Vec3, d: Vec3) -> Collision {
+pub fn swept_aabb(a: Vec3, ah: Vec3, b: Vec3, bh: Vec3, delta: Vec3) -> Collision {
     let m = b - (a + ah);
     let mh = ah + bh;
 
     let mut time = 1.0;
     let mut normal = Vec3::ZERO;
 
-    let s = line_to_plane(Vec3::ZERO, d, m, Vec3::NEG_X);
+    let s = line_to_plane(Vec3::ZERO, delta, m, Vec3::NEG_X);
 
     if s >= 0.0
-        && d.x > 0.0
+        && delta.x > 0.0
         && s < time
-        && between(s * d.y, m.y, m.y + mh.y)
-        && between(s * d.z, m.z, m.z + mh.z)
+        && between(s * delta.y, m.y, m.y + mh.y)
+        && between(s * delta.z, m.z, m.z + mh.z)
     {
         time = s;
         normal = Vec3::NEG_X;
     }
 
-    let s = line_to_plane(Vec3::ZERO, d, m + mh * Vec3::X, Vec3::X);
+    let s = line_to_plane(Vec3::ZERO, delta, m + mh * Vec3::X, Vec3::X);
 
     if s >= 0.0
-        && d.x < 0.0
+        && delta.x < 0.0
         && s < time
-        && between(s * d.y, m.y, m.y + mh.y)
-        && between(s * d.z, m.z, m.z + mh.z)
+        && between(s * delta.y, m.y, m.y + mh.y)
+        && between(s * delta.z, m.z, m.z + mh.z)
     {
         time = s;
         normal = Vec3::X;
     }
 
-    let s = line_to_plane(Vec3::ZERO, d, m, Vec3::NEG_Y);
+    let s = line_to_plane(Vec3::ZERO, delta, m, Vec3::NEG_Y);
 
     if s >= 0.0
-        && d.y > 0.0
+        && delta.y > 0.0
         && s < time
-        && between(s * d.x, m.x, m.x + mh.x)
-        && between(s * d.z, m.z, m.z + mh.z)
+        && between(s * delta.x, m.x, m.x + mh.x)
+        && between(s * delta.z, m.z, m.z + mh.z)
     {
         time = s;
         normal = Vec3::NEG_Y;
     }
 
-    let s = line_to_plane(Vec3::ZERO, d, m + mh * Vec3::Y, Vec3::Y);
+    let s = line_to_plane(Vec3::ZERO, delta, m + mh * Vec3::Y, Vec3::Y);
 
     if s >= 0.0
-        && d.y < 0.0
+        && delta.y < 0.0
         && s < time
-        && between(s * d.x, m.x, m.x + mh.x)
-        && between(s * d.z, m.z, m.z + mh.z)
+        && between(s * delta.x, m.x, m.x + mh.x)
+        && between(s * delta.z, m.z, m.z + mh.z)
     {
         time = s;
         normal = Vec3::Y;
     }
 
-    let s = line_to_plane(Vec3::ZERO, d, m, Vec3::NEG_Z);
+    let s = line_to_plane(Vec3::ZERO, delta, m, Vec3::NEG_Z);
 
     if s >= 0.0
-        && d.z > 0.0
+        && delta.z > 0.0
         && s < time
-        && between(s * d.x, m.x, m.x + mh.x)
-        && between(s * d.y, m.y, m.y + mh.y)
+        && between(s * delta.x, m.x, m.x + mh.x)
+        && between(s * delta.y, m.y, m.y + mh.y)
     {
         time = s;
         normal = Vec3::NEG_Z;
     }
 
-    let s = line_to_plane(Vec3::ZERO, d, m + mh * Vec3::Z, Vec3::Z);
+    let s = line_to_plane(Vec3::ZERO, delta, m + mh * Vec3::Z, Vec3::Z);
 
     if s >= 0.0
-        && d.z < 0.0
+        && delta.z < 0.0
         && s < time
-        && between(s * d.x, m.x, m.x + mh.x)
-        && between(s * d.y, m.y, m.y + mh.y)
+        && between(s * delta.x, m.x, m.x + mh.x)
+        && between(s * delta.y, m.y, m.y + mh.y)
     {
         time = s;
         normal = Vec3::Z;
