@@ -215,7 +215,7 @@ fn setup_registry(
 
     let material = materials.add(ChunkMaterial {
         array_texture: texture_handle.clone(),
-        ao_factor: 0.3,
+        ao_factor: 0.6,
         model_buffer: buffer_handle,
     });
 
