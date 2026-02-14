@@ -181,12 +181,14 @@ fn bfs_propagate_sky(
 }
 
 /// Propagate block light from emitting blocks within a chunk.
-/// Also seeds from emitting blocks in the 1-block border so light crosses
-/// chunk boundaries.
+/// Seeds from:
+/// 1. Light-emitting blocks inside the chunk
+/// 2. Already-computed block light values at the 6 border faces of neighbor chunks
 pub fn propagate_block_light(
     light: &mut LightDataInner,
     chunk_pos: IVec3,
     chunks: &RelevantChunks,
+    neighbor_lights: &RelevantLights,
     registry: &Registry,
 ) {
     let cs = CHUNK_SIZE as i32;
@@ -211,25 +213,31 @@ pub fn propagate_block_light(
         }
     }
 
-    // Seed from light-emitting blocks in the 1-block border (neighbor chunks)
-    // so that block light can cross chunk boundaries
-    for x in -1..=cs {
-        for y in -1..=cs {
-            for z in -1..=cs {
-                let local = IVec3::new(x, y, z);
-                if is_inside_chunk(local) {
-                    continue; // Already handled above
-                }
-                // Only check the 1-block shell, not the full 34^3 volume
-                if x < -1 || x > cs || y < -1 || y > cs || z < -1 || z > cs {
-                    continue;
-                }
+    // Seed from neighbor chunks' already-computed block light at the 6 border faces.
+    // This allows light from sources deep in neighbor chunks to propagate across.
+    let border_faces: [(IVec3, [std::ops::Range<i32>; 3]); 6] = [
+        (IVec3::new(-1, 0, 0), [-1..-0, 0..cs, 0..cs]),
+        (IVec3::new(cs, 0, 0), [cs..cs + 1, 0..cs, 0..cs]),
+        (IVec3::new(0, -1, 0), [0..cs, -1..0, 0..cs]),
+        (IVec3::new(0, cs, 0), [0..cs, cs..cs + 1, 0..cs]),
+        (IVec3::new(0, 0, -1), [0..cs, 0..cs, -1..0]),
+        (IVec3::new(0, 0, cs), [0..cs, 0..cs, cs..cs + 1]),
+    ];
 
-                let world_pos = base + local;
-                if let Some(block) = chunks.get_block(world_pos) {
-                    let emission = registry.block_type(block.id).light_emission(block.data);
-                    if emission > 0 {
-                        queue.push_back((world_pos, emission));
+    for (_normal, ranges) in &border_faces {
+        for x in ranges[0].clone() {
+            for y in ranges[1].clone() {
+                for z in ranges[2].clone() {
+                    let world_pos = base + IVec3::new(x, y, z);
+                    let (_, block_l) = neighbor_lights.get_light(world_pos);
+                    if block_l > 1 {
+                        // Don't seed through opaque blocks
+                        if let Some(block) = chunks.get_block(world_pos) {
+                            if is_opaque(block, registry) {
+                                continue;
+                            }
+                        }
+                        queue.push_back((world_pos, block_l));
                     }
                 }
             }

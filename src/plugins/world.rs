@@ -52,6 +52,7 @@ impl Plugin for WorldPlugin {
                 generation_tasks: IndexMap::new(),
                 light_tasks: IndexMap::new(),
                 mesh_tasks: IndexMap::new(),
+                pending_mesh_results: HashMap::new(),
                 chunks: IndexMap::new(),
                 chunks_to_save: HashMap::new(),
                 last_save_time: Instant::now(),
@@ -75,6 +76,7 @@ pub struct World {
     generation_tasks: IndexMap<IVec3, Task<GenerationResult>>,
     light_tasks: IndexMap<IVec3, Task<LightData>>,
     mesh_tasks: IndexMap<IVec3, Task<Option<Mesh>>>,
+    pending_mesh_results: HashMap<IVec3, Option<Mesh>>,
     chunks: IndexMap<IVec3, Chunk>,
     chunks_to_save: HashMap<IVec3, ChunkData>,
     save_task: Option<Task<()>>,
@@ -128,6 +130,9 @@ impl World {
 
         // Block change invalidates light for this chunk and neighbors
         self.invalidate_light(chunk_pos);
+        if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
+            chunk.mesh_status = MeshStatus::Urgent;
+        }
 
         for neighbor_pos in get_neighbors(chunk_pos) {
             self.invalidate_light(neighbor_pos);
@@ -183,6 +188,7 @@ impl World {
         }
         self.light_tasks.swap_remove(&chunk_pos);
         self.mesh_tasks.swap_remove(&chunk_pos);
+        self.pending_mesh_results.remove(&chunk_pos);
     }
 
     fn force_remesh(&mut self, chunk_pos: IVec3) {
@@ -248,7 +254,6 @@ fn update_day_night_cycle(
     if let Some(material) = materials.get_mut(&texture_array.material) {
         material.sun_direction = sun_direction;
         material.sun_strength = sun_strength;
-        material.ambient = 0.2;
         material.sky_brightness = sky_brightness;
     }
 }
@@ -420,9 +425,7 @@ fn propagate_lights(world: &mut World, registry: Arc<Registry>) {
         .chunks
         .iter()
         .filter_map(|(pos, chunk)| {
-            if chunk.light_status == LightStatus::Pending
-                && !world.light_tasks.contains_key(pos)
-            {
+            if chunk.light_status == LightStatus::Pending && !world.light_tasks.contains_key(pos) {
                 Some(*pos)
             } else {
                 None
@@ -438,11 +441,9 @@ fn propagate_lights(world: &mut World, registry: Arc<Registry>) {
         }
 
         // Need all neighbors loaded before we can compute light (for border seeding)
-        let mut can_light = true;
-        for neighbor_pos in get_neighbors(chunk_pos) {
-            can_light &=
-                world.chunks.contains_key(&neighbor_pos) || !world.is_visible_chunk(neighbor_pos);
-        }
+        let can_light = get_neighbors(chunk_pos)
+            .iter()
+            .all(|n| world.chunks.contains_key(n) || !world.is_visible_chunk(*n));
         if !can_light {
             continue;
         }
@@ -450,12 +451,22 @@ fn propagate_lights(world: &mut World, registry: Arc<Registry>) {
         let relevant_chunks = RelevantChunks::from_world(world, chunk_pos);
         let registry = registry.clone();
 
+        // Build neighbor lights for block light border seeding
+        let mut neighbor_lights =
+            RelevantLights::new(chunk_pos, Arc::new(LightDataInner::new()));
+        for neighbor_pos in get_neighbors(chunk_pos) {
+            if let Some(light) = world.get_light_data(neighbor_pos) {
+                neighbor_lights.add_neighbor(neighbor_pos, light);
+            }
+        }
+
         let task = task_pool.spawn(async move {
             let mut light = propagate_skylight(chunk_pos, &relevant_chunks, &registry);
             propagate_block_light(
                 Arc::make_mut(&mut light),
                 chunk_pos,
                 &relevant_chunks,
+                &neighbor_lights,
                 &registry,
             );
             light
@@ -478,6 +489,13 @@ fn propagate_lights(world: &mut World, registry: Arc<Registry>) {
         });
 
     for (chunk_pos, light) in results {
+        // Compare border block light with previous values. Only invalidate
+        // face-adjacent neighbors if the border changed, preventing infinite loops.
+        let border_changed = world
+            .chunks
+            .get(&chunk_pos)
+            .is_some_and(|chunk| border_block_light_changed(&chunk.light, &light));
+
         if let Some(chunk) = world.chunks.get_mut(&chunk_pos) {
             chunk.light = light;
             chunk.light_status = LightStatus::Complete;
@@ -488,9 +506,20 @@ fn propagate_lights(world: &mut World, registry: Arc<Registry>) {
             }
         }
 
-        // Neighbors need remeshing too (smooth lighting reads neighbor light)
+        // Neighbors need remeshing (smooth lighting reads neighbor light)
         for neighbor_pos in get_neighbors(chunk_pos) {
             world.force_remesh(neighbor_pos);
+        }
+
+        // If border block light changed, face-adjacent neighbors must re-propagate
+        if border_changed {
+            for neighbor_pos in get_face_neighbors(chunk_pos) {
+                if let Some(neighbor) = world.chunks.get(&neighbor_pos) {
+                    if neighbor.light_status == LightStatus::Complete {
+                        world.invalidate_light(neighbor_pos);
+                    }
+                }
+            }
         }
     }
 }
@@ -510,7 +539,9 @@ fn regenerate_meshes(
         .copied()
         .map(|chunk_pos| (chunk_pos, world.chunks[&chunk_pos].mesh_status))
         .filter(|&(chunk_pos, status)| {
-            status != MeshStatus::Complete && !world.mesh_tasks.contains_key(&chunk_pos)
+            status != MeshStatus::Complete
+                && !world.mesh_tasks.contains_key(&chunk_pos)
+                && !world.pending_mesh_results.contains_key(&chunk_pos)
         })
         .collect::<Vec<_>>();
 
@@ -598,19 +629,85 @@ fn regenerate_meshes(
             None => true,
         });
 
+    // Buffer urgent results; apply non-urgent immediately
     for (chunk_pos, mesh) in results {
-        if let Some(chunk) = world.chunks.get_mut(&chunk_pos) {
-            if let Some(mesh) = mesh {
-                commands
-                    .entity(chunk.entity)
-                    .insert((Visibility::Visible, Mesh3d(meshes.add(mesh))));
-            } else {
-                commands.entity(chunk.entity).insert(Visibility::Hidden);
-            }
+        let is_urgent = world
+            .chunks
+            .get(&chunk_pos)
+            .is_some_and(|c| c.mesh_status == MeshStatus::Urgent);
 
-            chunk.mesh_status = MeshStatus::Complete;
+        if is_urgent {
+            world.pending_mesh_results.insert(chunk_pos, mesh);
+        } else {
+            apply_mesh(commands, world, meshes, chunk_pos, mesh);
         }
     }
+
+    // Check if all urgent chunks now have results buffered
+    let all_urgent_ready = !world.chunks.iter().any(|(pos, chunk)| {
+        chunk.mesh_status == MeshStatus::Urgent && !world.pending_mesh_results.contains_key(pos)
+    });
+
+    // Flush the buffer once every urgent chunk is accounted for
+    if all_urgent_ready && !world.pending_mesh_results.is_empty() {
+        let buffered = mem::take(&mut world.pending_mesh_results);
+        for (chunk_pos, mesh) in buffered {
+            apply_mesh(commands, world, meshes, chunk_pos, mesh);
+        }
+    }
+}
+
+fn apply_mesh(
+    commands: &mut Commands,
+    world: &mut World,
+    meshes: &mut Assets<Mesh>,
+    chunk_pos: IVec3,
+    mesh: Option<Mesh>,
+) {
+    if let Some(chunk) = world.chunks.get_mut(&chunk_pos) {
+        if let Some(mesh) = mesh {
+            commands
+                .entity(chunk.entity)
+                .insert((Visibility::Visible, Mesh3d(meshes.add(mesh))));
+        } else {
+            commands.entity(chunk.entity).insert(Visibility::Hidden);
+        }
+
+        chunk.mesh_status = MeshStatus::Complete;
+    }
+}
+
+fn get_face_neighbors(chunk_pos: IVec3) -> [IVec3; 6] {
+    [
+        chunk_pos + IVec3::X,
+        chunk_pos - IVec3::X,
+        chunk_pos + IVec3::Y,
+        chunk_pos - IVec3::Y,
+        chunk_pos + IVec3::Z,
+        chunk_pos - IVec3::Z,
+    ]
+}
+
+fn border_block_light_changed(old: &LightData, new: &LightData) -> bool {
+    let cs = CHUNK_SIZE;
+    for a in 0..cs {
+        for b in 0..cs {
+            let positions = [
+                USizeVec3::new(0, a, b),
+                USizeVec3::new(cs - 1, a, b),
+                USizeVec3::new(a, 0, b),
+                USizeVec3::new(a, cs - 1, b),
+                USizeVec3::new(a, b, 0),
+                USizeVec3::new(a, b, cs - 1),
+            ];
+            for pos in positions {
+                if old.get_block_light(pos) != new.get_block_light(pos) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 fn get_neighbors(chunk_pos: IVec3) -> Vec<IVec3> {
