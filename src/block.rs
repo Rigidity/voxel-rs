@@ -210,7 +210,9 @@ impl RenderContext<'_> {
     pub fn is_face_visible(&self, face: BlockFace) -> bool {
         self.data
             .get_block(self.world_pos + face.normal())
-            .is_none_or(|neighboring_block| !self.is_face_obscured(self.block, neighboring_block, face))
+            .is_none_or(|neighboring_block| {
+                !self.is_face_obscured(self.block, neighboring_block, face)
+            })
     }
 
     pub fn add_surface(
@@ -220,10 +222,10 @@ impl RenderContext<'_> {
         is_transparent: bool,
         double_sided: bool,
     ) {
-        if let Some(cull_face) = surface.cull_face {
-            if !self.is_face_visible(cull_face) {
-                return;
-            }
+        if let Some(cull_face) = surface.cull_face
+            && !self.is_face_visible(cull_face)
+        {
+            return;
         }
 
         let index = self.mesh.index();
@@ -235,11 +237,11 @@ impl RenderContext<'_> {
             self.sample_vertex_shading(surface.shading_offsets[3], surface.normal),
         ];
 
-        for i in 0..4 {
+        for (i, shading) in shading.into_iter().enumerate() {
             self.mesh.vertices.push(ChunkVertex::new(
                 self.local_pos,
                 surface.vertex_indices[i],
-                shading[i],
+                shading,
                 texture_index,
                 is_transparent,
             ));
