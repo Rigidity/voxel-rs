@@ -1,5 +1,4 @@
 use std::{
-    cmp::Reverse,
     collections::HashMap,
     mem,
     path::PathBuf,
@@ -104,10 +103,6 @@ impl World {
 
         for neighbor_pos in get_neighbors(chunk_pos) {
             self.force_remesh(neighbor_pos);
-
-            if let Some(neighbor) = self.chunks.get_mut(&neighbor_pos) {
-                neighbor.mesh_status = MeshStatus::Urgent;
-            }
         }
     }
 
@@ -146,10 +141,8 @@ impl World {
     }
 
     fn force_remesh(&mut self, chunk_pos: IVec3) {
-        if let Some(chunk) = self.chunks.get_mut(&chunk_pos)
-            && chunk.mesh_status != MeshStatus::Urgent
-        {
-            chunk.mesh_status = MeshStatus::Queued;
+        if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
+            chunk.dirty = true;
         }
 
         self.mesh_tasks.swap_remove(&chunk_pos);
@@ -158,20 +151,8 @@ impl World {
 
 struct Chunk {
     data: ChunkData,
-    mesh_status: MeshStatus,
+    dirty: bool,
     entity: Entity,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum MeshStatus {
-    /// The chunk already has a mesh and hasn't been modified.
-    Complete,
-
-    /// The chunk is visible and should be meshed based on distance from the player.
-    Queued,
-
-    /// The chunk should be remeshed first.
-    Urgent,
 }
 
 fn update_world(
@@ -313,7 +294,7 @@ fn load_near_chunks(
             chunk_pos,
             Chunk {
                 data: result.chunk_data,
-                mesh_status: MeshStatus::Queued,
+                dirty: true,
                 entity,
             },
         );
@@ -340,36 +321,16 @@ fn regenerate_meshes(
         .chunks
         .keys()
         .copied()
-        .map(|chunk_pos| (chunk_pos, world.chunks[&chunk_pos].mesh_status))
-        .filter(|&(chunk_pos, status)| {
-            status != MeshStatus::Complete && !world.mesh_tasks.contains_key(&chunk_pos)
+        .filter(|chunk_pos| {
+            world.chunks[chunk_pos].dirty && !world.mesh_tasks.contains_key(chunk_pos)
         })
         .collect::<Vec<_>>();
 
-    // Sort chunks by priority and distance from the player
-    chunks_to_mesh
-        .sort_by_key(|&(chunk_pos, status)| (Reverse(status), world.chunk_sort_key(chunk_pos)));
+    // Sort chunks by distance from the player
+    chunks_to_mesh.sort_by_key(|&chunk_pos| world.chunk_sort_key(chunk_pos));
 
-    // Check if any chunks are urgent
-    let has_urgent = chunks_to_mesh
-        .iter()
-        .any(|&(_chunk_pos, status)| status == MeshStatus::Urgent);
-
-    // If any chunks are urgent, we need to regenerate their meshes first, so let's remove all other tasks
-    if has_urgent {
-        let chunk_statuses: HashMap<IVec3, MeshStatus> = world
-            .chunks
-            .iter()
-            .map(|(chunk_pos, chunk)| (*chunk_pos, chunk.mesh_status))
-            .collect();
-
-        world
-            .mesh_tasks
-            .retain(|chunk_pos, _| chunk_statuses[chunk_pos] == MeshStatus::Urgent);
-    }
-
-    for (chunk_pos, status) in chunks_to_mesh {
-        if world.mesh_tasks.len() >= 16 || (has_urgent && status != MeshStatus::Urgent) {
+    for chunk_pos in chunks_to_mesh {
+        if world.mesh_tasks.len() >= 16 {
             break;
         }
 
@@ -411,14 +372,6 @@ fn regenerate_meshes(
 
     for (chunk_pos, mesh) in results {
         if let Some(chunk) = world.chunks.get_mut(&chunk_pos) {
-            // if let Some(mesh) = mesh {
-            //     commands
-            //         .entity(chunk.entity)
-            //         .insert(Mesh3d(meshes.add(mesh)));
-            // } else {
-            //     commands.entity(chunk.entity).remove::<Mesh3d>();
-            // }
-
             if let Some(mesh) = mesh {
                 commands
                     .entity(chunk.entity)
@@ -428,7 +381,7 @@ fn regenerate_meshes(
             }
 
             // Mark the chunk as complete so we don't mesh it again
-            chunk.mesh_status = MeshStatus::Complete;
+            chunk.dirty = false;
         }
     }
 }
