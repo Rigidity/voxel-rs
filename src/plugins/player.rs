@@ -210,7 +210,7 @@ fn update_player(
 
     if cursor_options.grab_mode == CursorGrabMode::Locked {
         for event in mouse_motion_reader.read() {
-            let sensitivity = 0.0025;
+            let sensitivity = 0.00175;
 
             player.yaw -= event.delta.x * sensitivity;
             player.pitch -= event.delta.y * sensitivity;
@@ -244,7 +244,10 @@ fn update_player(
                 }
                 SelectedBlock::RockSlab => {
                     let rock_slab = shared_registry.0.block_id("rock_slab");
-                    Block::new(rock_slab, PackedData::builder().with_material(shale).build())
+                    Block::new(
+                        rock_slab,
+                        PackedData::builder().with_material(shale).build(),
+                    )
                 }
                 SelectedBlock::Glass => {
                     let glass = shared_registry.0.block_id("glass");
